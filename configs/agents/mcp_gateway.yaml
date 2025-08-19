@@ -1,0 +1,71 @@
+name: "MCP Gateway Agent"
+role: "mcp_gateway"
+description: "Agent specialized in MCP (Model Context Protocol) gateway operations using Supergateway"
+
+capabilities:
+  - "supergateway_mcp"
+  - "network_validation"
+  - "process_management"
+
+tools:
+  - name: "supergateway_mcp"
+    path: "tools.mcp.supergateway_adapter.SupergatewayTool"
+    config:
+      workspace_dir: "${CERBERUS_WORKSPACE_DIR}/mcp"
+      max_concurrent_gateways: 5
+      default_port_range: [8000, 8010]
+
+constraints:
+  max_iterations: 20
+  require_approval: true
+  allowed_actions:
+    - "start_sse_gateway"
+    - "start_stdio_gateway" 
+    - "start_http_gateway"
+    - "stop_gateway"
+    - "list_gateways"
+    - "audit_log"
+    - "cleanup"
+  
+  blocked_commands:
+    - "rm"
+    - "del" 
+    - "format"
+    - "shutdown"
+    - "reboot"
+    - "sudo"
+    - "su"
+
+safety_protocols:
+  sandbox_mode: true
+  network_isolation: false  # MCP requires network access
+  audit_logging: true
+  human_approval_required: true
+  timeout_seconds: 300
+  
+security_settings:
+  validate_mcp_commands: true
+  block_dangerous_operations: true
+  require_explicit_approval: true
+  log_all_operations: true
+  
+operational_limits:
+  max_concurrent_processes: 5
+  max_session_duration: 3600  # 1 hour
+  max_memory_usage: "512MB"
+  allowed_ports: [8000, 8001, 8002, 8003, 8004, 8005, 8006, 8007, 8008, 8009, 8010]
+
+mcp_settings:
+  default_transport: "sse"
+  supported_transports: ["sse", "ws", "streamableHttp"]
+  enable_cors: true
+  health_check_interval: 30
+  session_timeout: 60000
+  
+handoff_rules:
+  can_delegate_to: ["reconnaissance", "analysis"]
+  requires_approval_for: ["execution", "validation"]
+  escalation_triggers:
+    - "security_violation"
+    - "resource_exhaustion" 
+    - "unauthorized_access"

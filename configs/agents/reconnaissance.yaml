@@ -1,0 +1,37 @@
+name: "reconnaissance_agent"
+role: "reconnaissance"
+description: "Specialized agent for network discovery and information gathering"
+
+tools:
+  - "nmap_adapter"
+  - "subfinder_adapter" 
+  - "amass_adapter"
+  - "nuclei_adapter"
+
+capabilities:
+  - "network_scanning"
+  - "subdomain_enumeration"
+  - "service_detection"
+  - "vulnerability_scanning"
+
+constraints:
+  max_iterations: 15
+  require_approval: true
+  allowed_targets: []
+  blocked_actions:
+    - "destructive_commands"
+    - "data_exfiltration"
+  workspace_isolation: true
+  rate_limits:
+    requests_per_minute: 60
+    concurrent_scans: 3
+
+safety_protocols:
+  - "validate_target_permission"
+  - "check_legal_compliance"
+  - "log_all_actions"
+  - "human_approval_for_active_scans"
+
+handoff_targets:
+  - "analysis_agent"
+  - "validation_agent"
