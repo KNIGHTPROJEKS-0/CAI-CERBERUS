@@ -3,6 +3,7 @@ Virtualization command for CAI REPL.
 This module provides commands for setting up and managing Docker virtualization
 environments.
 """
+
 # Standard library imports
 import os
 import json
@@ -23,6 +24,7 @@ from cai.repl.commands.base import Command, register_command
 
 console = Console()
 
+
 class WorkspaceCommand(Command):
     """Command for workspace management within Docker containers or locally."""
 
@@ -34,34 +36,22 @@ class WorkspaceCommand(Command):
                 "Set or display the current workspace name and manage files."
                 " Affects log file naming and where files are stored."
             ),
-            aliases=["/ws"]
+            aliases=["/ws"],
         )
-        
+
         # Add subcommands
+        self.add_subcommand("set", "Set the current workspace name", self.handle_set)
         self.add_subcommand(
-            "set",
-            "Set the current workspace name",
-            self.handle_set
+            "get", "Display the current workspace name", self.handle_get
         )
         self.add_subcommand(
-            "get",
-            "Display the current workspace name",
-            self.handle_get
+            "ls", "List files in the workspace", self.handle_ls_subcommand
         )
         self.add_subcommand(
-            "ls",
-            "List files in the workspace",
-            self.handle_ls_subcommand
+            "exec", "Execute a command in the workspace", self.handle_exec_subcommand
         )
         self.add_subcommand(
-            "exec",
-            "Execute a command in the workspace",
-            self.handle_exec_subcommand
-        )
-        self.add_subcommand(
-            "copy",
-            "Copy files between host and container",
-            self.handle_copy_subcommand
+            "copy", "Copy files between host and container", self.handle_copy_subcommand
         )
 
     def handle(self, args: Optional[List[str]] = None) -> bool:
@@ -76,10 +66,10 @@ class WorkspaceCommand(Command):
         # If there are subcommands, process them
         if args and args[0] in self.subcommands:
             return super().handle(args)
-            
+
         # No arguments means show workspace info (same as get)
         return self.handle_get()
-    
+
     def handle_no_args(self) -> bool:
         """Handle the command when no arguments are provided."""
         return self.handle_get()
@@ -88,10 +78,10 @@ class WorkspaceCommand(Command):
         """Display the current workspace name and directory information."""
         # Get workspace info
         workspace_name = os.getenv("CAI_WORKSPACE", None)
-        
+
         # Check if a container is active
         active_container = os.getenv("CAI_ACTIVE_CONTAINER", "")
-        
+
         # Determine environment (container or host)
         if active_container:
             try:
@@ -100,16 +90,18 @@ class WorkspaceCommand(Command):
                     ["docker", "inspect", active_container],
                     capture_output=True,
                     text=True,
-                    check=False
+                    check=False,
                 )
-                
+
                 if result.returncode == 0:
                     container_info = json.loads(result.stdout)
                     if container_info:
-                        image = container_info[0].get("Config", {}).get("Image", "unknown")
+                        image = (
+                            container_info[0].get("Config", {}).get("Image", "unknown")
+                        )
                         env_type = "container"
                         env_name = f"Container ({image})"
-                        
+
                         # For containers, if workspace is set, use container workspace path
                         # otherwise use root directory
                         if workspace_name:
@@ -117,9 +109,16 @@ class WorkspaceCommand(Command):
                             workspace_dir = f"/workspace/workspaces/{workspace_name}"
                             # Ensure the directory exists in the container
                             subprocess.run(
-                                ["docker", "exec", active_container, "mkdir", "-p", workspace_dir],
+                                [
+                                    "docker",
+                                    "exec",
+                                    active_container,
+                                    "mkdir",
+                                    "-p",
+                                    workspace_dir,
+                                ],
                                 capture_output=True,
-                                check=False
+                                check=False,
                             )
                         else:
                             workspace_dir = "/"
@@ -128,28 +127,37 @@ class WorkspaceCommand(Command):
                     env_name = "Host System (container not running)"
                     # Use common._get_workspace_dir() for consistency
                     try:
-                        from cai.tools.common import _get_workspace_dir as get_common_workspace_dir
+                        from cai.tools.common import (
+                            _get_workspace_dir as get_common_workspace_dir,
+                        )
+
                         workspace_dir = get_common_workspace_dir()
                     except ImportError:
-                         workspace_dir = os.getcwd() # Basic fallback
+                        workspace_dir = os.getcwd()  # Basic fallback
             except Exception:
                 env_type = "host"
                 env_name = "Host System (error inspecting container)"
                 # Use common._get_workspace_dir() for consistency
                 try:
-                    from cai.tools.common import _get_workspace_dir as get_common_workspace_dir
+                    from cai.tools.common import (
+                        _get_workspace_dir as get_common_workspace_dir,
+                    )
+
                     workspace_dir = get_common_workspace_dir()
                 except ImportError:
-                     workspace_dir = os.getcwd() # Basic fallback
+                    workspace_dir = os.getcwd()  # Basic fallback
         else:
             env_type = "host"
             env_name = "Host System"
             # Use common._get_workspace_dir() for consistency
             try:
-                from cai.tools.common import _get_workspace_dir as get_common_workspace_dir
+                from cai.tools.common import (
+                    _get_workspace_dir as get_common_workspace_dir,
+                )
+
                 workspace_dir = get_common_workspace_dir()
             except ImportError:
-                 workspace_dir = os.getcwd() # Basic fallback
+                workspace_dir = os.getcwd()  # Basic fallback
 
         # Show workspace information
         console.print(
@@ -158,43 +166,92 @@ class WorkspaceCommand(Command):
                 f"Working in environment: [bold]{env_name}[/bold]\n"
                 f"Workspace directory: [bold]{workspace_dir}[/bold]",
                 title="Workspace Information",
-                border_style="green"
+                border_style="green",
             )
         )
-        
+
         # Show available workspace commands
         console.print("\n[cyan]Workspace Commands:[/cyan]")
         console.print(
             "  [bold]/workspace set <name>[/bold]      - "
-            "Set the current workspace name")
+            "Set the current workspace name"
+        )
         console.print(
-            "  [bold]/workspace ls[/bold]              - "
-            "List files in the workspace")
+            "  [bold]/workspace ls[/bold]              - " "List files in the workspace"
+        )
         console.print(
             "  [bold]/workspace exec <cmd>[/bold]      - "
-            "Execute a command in the workspace")
-            
+            "Execute a command in the workspace"
+        )
+
         if active_container:
             console.print(
                 "  [bold]/workspace copy <src> <dst>[/bold] - "
-                "Copy files between host and container")
-        
+                "Copy files between host and container"
+            )
+
         # List contents of the workspace
         self._list_workspace_contents(env_type, workspace_dir)
-            
+
         return True
 
     def handle_set(self, args: Optional[List[str]] = None) -> bool:
-        """Set the current workspace name """
-        if not args or len(args) != 1:
+        """Set the current workspace name with optional environment setup
+
+        Usage:
+          /workspace set <workspace_name> [--venv] [--conda] [--python <version_or_path>]
+
+        Notes:
+          - --venv: Create a Python virtual environment at <workspace>/.venv on host.
+                    If a container is active, also attempts to create it inside the container workspace.
+          - --conda: Create a Conda environment at <workspace>/.conda on host (requires 'conda').
+          - --python: Specify Python version (e.g., 3.11) or absolute path to Python interpreter.
+                      For --venv: uses the specified interpreter. For --conda: sets python version.
+        """
+        if not args or len(args) < 1:
             console.print(
-                "[yellow]Usage: /workspace set <workspace_name>[/yellow]"
+                "[yellow]Usage: /workspace set <workspace_name> [--venv] [--conda] [--python <version_or_path>][/yellow]"
             )
             return False
 
+        # Parse positional and flags
         workspace_name = args[0]
-        # Allow alphanumeric, underscores, hyphens
-        if not all(c.isalnum() or c in ['_', '-'] for c in workspace_name):
+        extra_args = args[1:] if len(args) > 1 else []
+
+        create_venv = False
+        create_conda = False
+        python_spec: Optional[str] = None
+
+        i = 0
+        while i < len(extra_args):
+            tok = extra_args[i]
+            if tok == "--venv":
+                create_venv = True
+                i += 1
+                continue
+            if tok == "--conda":
+                create_conda = True
+                i += 1
+                continue
+            if tok == "--python":
+                if i + 1 >= len(extra_args):
+                    console.print(
+                        "[red]--python requires a value (version or path).[/red]"
+                    )
+                    return False
+                python_spec = extra_args[i + 1]
+                i += 2
+                continue
+            if tok.startswith("--python="):
+                python_spec = tok.split("=", 1)[1].strip()
+                i += 1
+                continue
+            # Unknown flag
+            console.print(f"[yellow]Unknown flag '{tok}'. Ignoring.[/yellow]")
+            i += 1
+
+        # Validate workspace name: allow alphanumeric, underscores, hyphens
+        if not all(c.isalnum() or c in ["_", "-"] for c in workspace_name):
             console.print(
                 "[red]Invalid workspace name. "
                 "Use alphanumeric, underscores, or hyphens only.[/red]"
@@ -206,7 +263,9 @@ class WorkspaceCommand(Command):
         try:
             from cai.repl.commands.config import set_env_var
             from cai.tools.common import _get_workspace_dir as get_common_workspace_dir
-            from cai.tools.common import _get_container_workspace_path as get_common_container_path
+            from cai.tools.common import (
+                _get_container_workspace_path as get_common_container_path,
+            )
 
             # Set the environment variable
             if not set_env_var("CAI_WORKSPACE", workspace_name):
@@ -217,53 +276,71 @@ class WorkspaceCommand(Command):
         except ImportError:
             # Fallback if import fails
             os.environ["CAI_WORKSPACE"] = workspace_name
+
             # Define basic fallbacks for path functions if import failed
             def get_common_workspace_dir():
-                 base = os.getenv("CAI_WORKSPACE_DIR", ".") # Default to current dir base
-                 name = os.getenv("CAI_WORKSPACE")
-                 if name:
-                      return os.path.abspath(os.path.join(base, name))
-                 return os.path.abspath(base) # Use base dir if no name
+                base = os.getenv(
+                    "CAI_WORKSPACE_DIR", "."
+                )  # Default to current dir base
+                name = os.getenv("CAI_WORKSPACE")
+                if name:
+                    return os.path.abspath(os.path.join(base, name))
+                return os.path.abspath(base)  # Use base dir if no name
 
             def get_common_container_path():
-                 name = os.getenv("CAI_WORKSPACE")
-                 if name:
-                      return f"/workspace/workspaces/{name}"
-                 return "/" # Default container path
-    
+                name = os.getenv("CAI_WORKSPACE")
+                if name:
+                    return f"/workspace/workspaces/{name}"
+                return "/"  # Default container path
+
         # Get the new workspace directory using the common function
         new_workspace_dir = get_common_workspace_dir()
 
         # Create the directory if it doesn't exist on host
-        try: # Add try-except for robustness
-             os.makedirs(new_workspace_dir, exist_ok=True)
+        try:  # Add try-except for robustness
+            os.makedirs(new_workspace_dir, exist_ok=True)
         except OSError as e:
-             console.print(f"[red]Error creating host directory {new_workspace_dir}: {e}[/red]")
-             # Decide if this is fatal or just a warning
+            console.print(
+                f"[red]Error creating host directory {new_workspace_dir}: {e}[/red]"
+            )
+            # Decide if this is fatal or just a warning
+
+        # Track environment setup results
+        setup_messages: List[str] = []
 
         # If container is active, also create the directory in the container
         active_container = os.getenv("CAI_ACTIVE_CONTAINER", "")
+        container_workspace_path = None
         if active_container:
             # Check if container is running
             check_process = subprocess.run(
-                ["docker", "inspect", "--format", "{{.State.Running}}", active_container],
+                [
+                    "docker",
+                    "inspect",
+                    "--format",
+                    "{{.State.Running}}",
+                    active_container,
+                ],
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
             )
 
             if check_process.returncode == 0 and "true" in check_process.stdout.lower():
                 # Get container workspace path using the common function
                 container_workspace_path = get_common_container_path()
                 try:
-                    mkdir_cmd = ["docker", "exec", active_container, "mkdir", "-p", container_workspace_path]
+                    mkdir_cmd = [
+                        "docker",
+                        "exec",
+                        active_container,
+                        "mkdir",
+                        "-p",
+                        container_workspace_path,
+                    ]
                     mkdir_result = subprocess.run(
-                        mkdir_cmd,
-                        capture_output=True,
-                        text=True,
-                        check=False
+                        mkdir_cmd, capture_output=True, text=True, check=False
                     )
-                    
                     if mkdir_result.returncode == 0:
                         console.print(
                             f"[dim]Created workspace directory in container: {container_workspace_path}[/dim]"
@@ -276,19 +353,139 @@ class WorkspaceCommand(Command):
                     console.print(
                         f"[yellow]Warning: Failed to setup workspace in container: {str(e)}[/yellow]"
                     )
-        
+
+        # Optional: Create Python venv on host
+        if create_venv:
+            venv_path = os.path.join(new_workspace_dir, ".venv")
+            # Determine python executable
+            py_exec = None
+            if python_spec:
+                # If an absolute/relative path, use directly; else try python{version}
+                if os.path.isabs(python_spec) or os.sep in python_spec:
+                    py_exec = python_spec
+                else:
+                    py_exec = f"python{python_spec}"  # e.g., python3.11
+            else:
+                # Try python3 then python
+                py_exec = "python3"
+
+            # Try creating venv
+            try:
+                result = subprocess.run(
+                    [py_exec, "-m", "venv", venv_path],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if result.returncode != 0 and py_exec != "python":
+                    # Fallback to plain 'python'
+                    result = subprocess.run(
+                        ["python", "-m", "venv", venv_path],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                if result.returncode == 0:
+                    setup_messages.append(
+                        f"[green]Created host venv at {venv_path}[/green]"
+                    )
+                else:
+                    setup_messages.append(
+                        f"[yellow]Failed to create host venv: {result.stderr.strip()}[/yellow]"
+                    )
+            except Exception as e:
+                setup_messages.append(
+                    f"[yellow]Error creating host venv: {str(e)}[/yellow]"
+                )
+
+            # Also attempt to create venv in container if active and path known
+            if active_container and container_workspace_path:
+                c_venv_path = os.path.join(container_workspace_path, ".venv")
+                try:
+                    # Try python3 then python inside container
+                    cmd = (
+                        f"if command -v python3 >/dev/null 2>&1; then python3 -m venv {c_venv_path}; "
+                        f"elif command -v python >/dev/null 2>&1; then python -m venv {c_venv_path}; "
+                        f"else echo 'python not found' >&2; exit 127; fi"
+                    )
+                    result = subprocess.run(
+                        ["docker", "exec", active_container, "sh", "-c", cmd],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    if result.returncode == 0:
+                        setup_messages.append(
+                            f"[green]Created container venv at {c_venv_path}[/green]"
+                        )
+                    else:
+                        setup_messages.append(
+                            f"[yellow]Failed to create container venv: {result.stderr.strip()}[/yellow]"
+                        )
+                except Exception as e:
+                    setup_messages.append(
+                        f"[yellow]Error creating container venv: {str(e)}[/yellow]"
+                    )
+
+        # Optional: Create Conda env on host (local path)
+        if create_conda:
+            conda_prefix = os.path.join(new_workspace_dir, ".conda")
+            # Determine python version for conda
+            conda_python_arg = []
+            if python_spec and python_spec.replace(".", "").isdigit():
+                conda_python_arg = [f"python={python_spec}"]
+            elif python_spec and (os.path.isabs(python_spec) or os.sep in python_spec):
+                # If a path was provided, we can't use it directly with conda; warn
+                setup_messages.append(
+                    "[yellow]--python path ignored for Conda; specify a version like 3.11 instead.[/yellow]"
+                )
+            try:
+                # Ensure conda exists
+                result = subprocess.run(
+                    ["conda", "--version"], capture_output=True, text=True, check=False
+                )
+                if result.returncode != 0:
+                    setup_messages.append(
+                        "[yellow]Conda not available on host; skipping --conda setup.[/yellow]"
+                    )
+                else:
+                    cmd = ["conda", "create", "-y", "-p", conda_prefix]
+                    if conda_python_arg:
+                        cmd.append(conda_python_arg[0])
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, check=False
+                    )
+                    if result.returncode == 0:
+                        setup_messages.append(
+                            f"[green]Created Conda env at {conda_prefix}[/green]"
+                        )
+                    else:
+                        setup_messages.append(
+                            f"[yellow]Failed to create Conda env: {result.stderr.strip()}[/yellow]"
+                        )
+            except Exception as e:
+                setup_messages.append(
+                    f"[yellow]Error creating Conda env: {str(e)}[/yellow]"
+                )
+
         # Use a different panel style to indicate success
+        env_details = (
+            "\n".join(setup_messages)
+            if setup_messages
+            else "No environment changes requested."
+        )
         console.print(
             Panel(
                 f"Workspace changed to: [bold green]{workspace_name}[/bold green]\n"
-                f"New workspace directory: [bold]{new_workspace_dir}[/bold]",
+                f"New workspace directory: [bold]{new_workspace_dir}[/bold]\n\n"
+                f"[bold]Environment setup:[/bold]\n{env_details}",
                 title="Workspace Updated",
-                border_style="green"
+                border_style="green",
             )
         )
-        
+
         return True
-        
+
     def _get_workspace_dir(self) -> str:
         """Get the host workspace directory using the common utility.
 
@@ -298,6 +495,7 @@ class WorkspaceCommand(Command):
         try:
             # Use the centralized function from common.py
             from cai.tools.common import _get_workspace_dir as get_common_workspace_dir
+
             return get_common_workspace_dir()
         except ImportError:
             # Provide a basic fallback if import fails, mirroring common.py logic
@@ -306,57 +504,63 @@ class WorkspaceCommand(Command):
             workspace_name = os.getenv("CAI_WORKSPACE")
 
             if base_dir and workspace_name:
-                 # Basic validation
-                 if not all(c.isalnum() or c in ['_', '-'] for c in workspace_name):
-                      print(f"[yellow]Warning: Invalid CAI_WORKSPACE name '{workspace_name}' in fallback.[/yellow]")
-                      # Fallback to base directory if name is invalid
-                      return os.path.abspath(base_dir)
-                 target_dir = os.path.join(base_dir, workspace_name)
-                 return os.path.abspath(target_dir)
+                # Basic validation
+                if not all(c.isalnum() or c in ["_", "-"] for c in workspace_name):
+                    print(
+                        f"[yellow]Warning: Invalid CAI_WORKSPACE name '{workspace_name}' in fallback.[/yellow]"
+                    )
+                    # Fallback to base directory if name is invalid
+                    return os.path.abspath(base_dir)
+                target_dir = os.path.join(base_dir, workspace_name)
+                return os.path.abspath(target_dir)
             elif base_dir:
-                 # If only base dir is set, use that
-                 return os.path.abspath(base_dir)
+                # If only base dir is set, use that
+                return os.path.abspath(base_dir)
             else:
-                 # Default to current working directory if nothing else is set
-                 return os.getcwd()
+                # Default to current working directory if nothing else is set
+                return os.getcwd()
 
     def _list_workspace_contents(self, env_type: str, workspace_dir: str) -> None:
         """List the contents of the workspace.
-        
+
         Args:
             env_type: The environment type (container or host)
             workspace_dir: The workspace directory
         """
         console.print("\n[bold]Workspace Contents:[/bold]")
-        
+
         if env_type == "container":
             active_container = os.getenv("CAI_ACTIVE_CONTAINER", "")
-            
+
             # For containers, use the workspace path provided
             # This should already be the correct path from handle_get
-            
+
             # First ensure the workspace directory exists in the container
             try:
-                mkdir_cmd = ["docker", "exec", active_container, "mkdir", "-p", workspace_dir]
-                subprocess.run(
-                    mkdir_cmd,
-                    capture_output=True,
-                    text=True,
-                    check=False
-                )
-                
+                mkdir_cmd = [
+                    "docker",
+                    "exec",
+                    active_container,
+                    "mkdir",
+                    "-p",
+                    workspace_dir,
+                ]
+                subprocess.run(mkdir_cmd, capture_output=True, text=True, check=False)
+
                 # Now list the contents
                 result = subprocess.run(
                     ["docker", "exec", active_container, "ls", "-la", workspace_dir],
                     capture_output=True,
                     text=True,
-                    check=False
+                    check=False,
                 )
-                
+
                 if result.returncode == 0:
                     console.print(result.stdout)
                 else:
-                    console.print(f"[yellow]Error listing container files: {result.stderr}[/yellow]")
+                    console.print(
+                        f"[yellow]Error listing container files: {result.stderr}[/yellow]"
+                    )
                     # Fallback to host
                     self._list_host_files(workspace_dir)
             except Exception as e:
@@ -366,55 +570,60 @@ class WorkspaceCommand(Command):
         else:
             # List files in host
             self._list_host_files(workspace_dir)
-            
+
     def _list_host_files(self, workspace_dir: str) -> None:
         """List files in the host workspace.
-        
+
         Args:
             workspace_dir: The workspace directory
         """
         # Ensure the directory exists
         os.makedirs(workspace_dir, exist_ok=True)
-        
+
         try:
             result = subprocess.run(
                 ["ls", "-la", workspace_dir],
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
             )
-            
+
             if result.returncode == 0:
                 console.print(result.stdout)
             else:
                 console.print(f"[yellow]Error listing files: {result.stderr}[/yellow]")
         except Exception as e:
             console.print(f"[yellow]Error: {str(e)}[/yellow]")
-            
+
     def handle_ls_subcommand(self, args: Optional[List[str]] = None) -> bool:
         """Handle the ls subcommand.
-        
+
         Args:
             args: Optional list of subcommand arguments
-            
+
         Returns:
             True if the subcommand was handled successfully, False otherwise
         """
         # Get workspace info using common functions
         try:
             from cai.tools.common import _get_workspace_dir as get_common_workspace_dir
-            from cai.tools.common import _get_container_workspace_path as get_common_container_path
+            from cai.tools.common import (
+                _get_container_workspace_path as get_common_container_path,
+            )
         except ImportError:
-             # Define basic fallbacks if import fails
-             def get_common_workspace_dir():
-                 base = os.getenv("CAI_WORKSPACE_DIR", ".")
-                 name = os.getenv("CAI_WORKSPACE")
-                 if name: return os.path.abspath(os.path.join(base, name))
-                 return os.path.abspath(base)
-             def get_common_container_path():
-                 name = os.getenv("CAI_WORKSPACE")
-                 if name: return f"/workspace/workspaces/{name}"
-                 return "/"
+            # Define basic fallbacks if import fails
+            def get_common_workspace_dir():
+                base = os.getenv("CAI_WORKSPACE_DIR", ".")
+                name = os.getenv("CAI_WORKSPACE")
+                if name:
+                    return os.path.abspath(os.path.join(base, name))
+                return os.path.abspath(base)
+
+            def get_common_container_path():
+                name = os.getenv("CAI_WORKSPACE")
+                if name:
+                    return f"/workspace/workspaces/{name}"
+                return "/"
 
         host_workspace_dir = get_common_workspace_dir()
         active_container = os.getenv("CAI_ACTIVE_CONTAINER", "")
@@ -428,57 +637,76 @@ class WorkspaceCommand(Command):
             target_path_in_container = container_workspace_path
             if args:
                 # Ensure args[0] is treated as relative to the workspace
-                target_path_in_container = os.path.join(container_workspace_path, args[0])
+                target_path_in_container = os.path.join(
+                    container_workspace_path, args[0]
+                )
 
             # Ensure the base workspace directory exists in the container
-            mkdir_cmd = ["docker", "exec", active_container, "mkdir", "-p", container_workspace_path]
-            subprocess.run(
-                mkdir_cmd,
-                capture_output=True,
-                text=True,
-                check=False
-            )
+            mkdir_cmd = [
+                "docker",
+                "exec",
+                active_container,
+                "mkdir",
+                "-p",
+                container_workspace_path,
+            ]
+            subprocess.run(mkdir_cmd, capture_output=True, text=True, check=False)
 
             # Try in container
             result = subprocess.run(
-                ["docker", "exec", active_container, "ls", "-la", target_path_in_container], # Use target path
+                [
+                    "docker",
+                    "exec",
+                    active_container,
+                    "ls",
+                    "-la",
+                    target_path_in_container,
+                ],  # Use target path
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
             )
 
             if result.returncode == 0:
                 console.print(result.stdout)
                 return True
-                
+
             # If failed, try on host
-            console.print(f"[yellow]Failed to list files in container: {result.stderr}[/yellow]")
+            console.print(
+                f"[yellow]Failed to list files in container: {result.stderr}[/yellow]"
+            )
             console.print("[yellow]Falling back to host system...[/yellow]")
-            
+
         # List on host
         # Determine target path on host relative to host workspace dir
         target_path_on_host = host_workspace_dir
         if args:
-             # Ensure args[0] is treated as relative to the workspace
-             target_path_on_host = os.path.join(host_workspace_dir, args[0])
+            # Ensure args[0] is treated as relative to the workspace
+            target_path_on_host = os.path.join(host_workspace_dir, args[0])
 
         # Ensure the target directory exists on host before listing
         # Use os.path.dirname if target is potentially a file path
-        dir_to_ensure = os.path.dirname(target_path_on_host) if '.' in os.path.basename(target_path_on_host) else target_path_on_host
+        dir_to_ensure = (
+            os.path.dirname(target_path_on_host)
+            if "." in os.path.basename(target_path_on_host)
+            else target_path_on_host
+        )
         try:
             os.makedirs(dir_to_ensure, exist_ok=True)
         except OSError as e:
-            console.print(f"[red]Error creating directory {dir_to_ensure} on host: {e}[/red]")
+            console.print(
+                f"[red]Error creating directory {dir_to_ensure} on host: {e}[/red]"
+            )
             # Potentially return False or handle error appropriately
 
         try:
             result = subprocess.run(
-                ["ls", "-la", target_path_on_host], # Use target path
+                ["ls", "-la", target_path_on_host],  # Use target path
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
             )
-            
+
             if result.returncode == 0:
                 console.print(result.stdout)
                 return True
@@ -488,38 +716,43 @@ class WorkspaceCommand(Command):
         except Exception as e:
             console.print(f"[red]Error: {str(e)}[/red]")
             return False
-            
+
         return True
-        
+
     def handle_exec_subcommand(self, args: Optional[List[str]] = None) -> bool:
         """Handle the exec subcommand.
-        
+
         Args:
             args: Optional list of subcommand arguments
-            
+
         Returns:
             True if the subcommand was handled successfully, False otherwise
         """
         if not args:
             console.print("[yellow]Please specify a command to execute.[/yellow]")
             return False
-            
+
         command = " ".join(args)
         # Get workspace info using common functions
         try:
             from cai.tools.common import _get_workspace_dir as get_common_workspace_dir
-            from cai.tools.common import _get_container_workspace_path as get_common_container_path
+            from cai.tools.common import (
+                _get_container_workspace_path as get_common_container_path,
+            )
         except ImportError:
-             # Define basic fallbacks if import fails
-             def get_common_workspace_dir():
-                 base = os.getenv("CAI_WORKSPACE_DIR", ".")
-                 name = os.getenv("CAI_WORKSPACE")
-                 if name: return os.path.abspath(os.path.join(base, name))
-                 return os.path.abspath(base)
-             def get_common_container_path():
-                 name = os.getenv("CAI_WORKSPACE")
-                 if name: return f"/workspace/workspaces/{name}"
-                 return "/"
+            # Define basic fallbacks if import fails
+            def get_common_workspace_dir():
+                base = os.getenv("CAI_WORKSPACE_DIR", ".")
+                name = os.getenv("CAI_WORKSPACE")
+                if name:
+                    return os.path.abspath(os.path.join(base, name))
+                return os.path.abspath(base)
+
+            def get_common_container_path():
+                name = os.getenv("CAI_WORKSPACE")
+                if name:
+                    return f"/workspace/workspaces/{name}"
+                return "/"
 
         host_workspace_dir = get_common_workspace_dir()
         active_container = os.getenv("CAI_ACTIVE_CONTAINER", "")
@@ -531,20 +764,31 @@ class WorkspaceCommand(Command):
                 container_workspace_path = get_common_container_path()
 
                 # First ensure the workspace directory exists in the container
-                mkdir_cmd = ["docker", "exec", active_container, "mkdir", "-p", container_workspace_path]
-                subprocess.run(
-                    mkdir_cmd,
-                    capture_output=True,
-                    text=True,
-                    check=False
-                )
+                mkdir_cmd = [
+                    "docker",
+                    "exec",
+                    active_container,
+                    "mkdir",
+                    "-p",
+                    container_workspace_path,
+                ]
+                subprocess.run(mkdir_cmd, capture_output=True, text=True, check=False)
 
                 # Execute the command in the container's workspace directory
                 result = subprocess.run(
-                    ["docker", "exec", "-w", container_workspace_path, active_container, "sh", "-c", command],
+                    [
+                        "docker",
+                        "exec",
+                        "-w",
+                        container_workspace_path,
+                        active_container,
+                        "sh",
+                        "-c",
+                        command,
+                    ],
                     capture_output=True,
                     text=True,
-                    check=False
+                    check=False,
                 )
 
                 console.print(f"[dim]$ {command}[/dim]")
@@ -555,30 +799,38 @@ class WorkspaceCommand(Command):
                     console.print(f"[yellow]{result.stderr}[/yellow]")
 
                 if result.returncode != 0:
-                    console.print("[yellow]Command failed in container. Trying on host...[/yellow]")
-                    return self._exec_on_host(command, host_workspace_dir) # Pass host_workspace_dir
+                    console.print(
+                        "[yellow]Command failed in container. Trying on host...[/yellow]"
+                    )
+                    return self._exec_on_host(
+                        command, host_workspace_dir
+                    )  # Pass host_workspace_dir
 
                 return True
             except Exception as e:
-                console.print(f"[yellow]Error executing in container: {str(e)}[/yellow]")
+                console.print(
+                    f"[yellow]Error executing in container: {str(e)}[/yellow]"
+                )
                 console.print("[yellow]Falling back to host execution...[/yellow]")
-        
+
         # Execute on host
-        return self._exec_on_host(command, host_workspace_dir) # Pass host_workspace_dir
+        return self._exec_on_host(
+            command, host_workspace_dir
+        )  # Pass host_workspace_dir
 
     def _exec_on_host(self, command: str, workspace_dir: str) -> bool:
         """Execute a command on the host.
-        
+
         Args:
             command: The command to execute
             workspace_dir: The workspace directory
-            
+
         Returns:
             True if the command was executed successfully, False otherwise
         """
         # Ensure the directory exists
         os.makedirs(workspace_dir, exist_ok=True)
-        
+
         try:
             result = subprocess.run(
                 command,
@@ -586,65 +838,73 @@ class WorkspaceCommand(Command):
                 capture_output=True,
                 text=True,
                 check=False,
-                cwd=workspace_dir
+                cwd=workspace_dir,
             )
-            
+
             console.print(f"[dim]$ {command}[/dim]")
             if result.stdout:
                 console.print(result.stdout)
-                
+
             if result.stderr:
                 console.print(f"[yellow]{result.stderr}[/yellow]")
-                
+
             return result.returncode == 0
         except Exception as e:
             console.print(f"[red]Error executing command: {str(e)}[/red]")
             return False
-            
+
     def handle_copy_subcommand(self, args: Optional[List[str]] = None) -> bool:
         """Handle the copy subcommand.
-        
+
         Args:
             args: Optional list of subcommand arguments
-            
+
         Returns:
             True if the subcommand was handled successfully, False otherwise
         """
         if not args or len(args) < 2:
-            console.print("[yellow]Please specify source and destination for copy.[/yellow]")
+            console.print(
+                "[yellow]Please specify source and destination for copy.[/yellow]"
+            )
             console.print("Usage: /workspace copy <source> <destination>")
             return False
-            
+
         active_container = os.getenv("CAI_ACTIVE_CONTAINER", "")
         if not active_container:
-            console.print("[yellow]No active container. Copy only works with containers.[/yellow]")
+            console.print(
+                "[yellow]No active container. Copy only works with containers.[/yellow]"
+            )
             return False
-            
+
         source = args[0]
         destination = args[1]
-        
+
         # Check if copying from container to host or vice versa
         if source.startswith("container:"):
             # Copy from container to host
             container_path = source[10:]  # Remove "container:" prefix
             host_path = destination
-            
+
             if not container_path.startswith("/"):
                 container_path = f"/workspace/{container_path}"
-                
+
             try:
                 result = subprocess.run(
                     ["docker", "cp", f"{active_container}:{container_path}", host_path],
                     capture_output=True,
                     text=True,
-                    check=False
+                    check=False,
                 )
-                
+
                 if result.returncode == 0:
-                    console.print(f"[green]Copied from container:{container_path} to {host_path}[/green]")
+                    console.print(
+                        f"[green]Copied from container:{container_path} to {host_path}[/green]"
+                    )
                     return True
                 else:
-                    console.print(f"[red]Error copying from container: {result.stderr}[/red]")
+                    console.print(
+                        f"[red]Error copying from container: {result.stderr}[/red]"
+                    )
                     return False
             except Exception as e:
                 console.print(f"[red]Error: {str(e)}[/red]")
@@ -653,35 +913,45 @@ class WorkspaceCommand(Command):
             # Copy from host to container
             host_path = source
             container_path = destination[10:]  # Remove "container:" prefix
-            
+
             if not container_path.startswith("/"):
                 container_path = f"/workspace/{container_path}"
-                
+
             try:
                 result = subprocess.run(
                     ["docker", "cp", host_path, f"{active_container}:{container_path}"],
                     capture_output=True,
                     text=True,
-                    check=False
+                    check=False,
                 )
-                
+
                 if result.returncode == 0:
-                    console.print(f"[green]Copied from {host_path} to container:{container_path}[/green]")
+                    console.print(
+                        f"[green]Copied from {host_path} to container:{container_path}[/green]"
+                    )
                     return True
                 else:
-                    console.print(f"[red]Error copying to container: {result.stderr}[/red]")
+                    console.print(
+                        f"[red]Error copying to container: {result.stderr}[/red]"
+                    )
                     return False
             except Exception as e:
                 console.print(f"[red]Error: {str(e)}[/red]")
                 return False
         else:
             # Ambiguous copy - show help
-            console.print("[yellow]Ambiguous copy direction. Please specify container: prefix.[/yellow]")
+            console.print(
+                "[yellow]Ambiguous copy direction. Please specify container: prefix.[/yellow]"
+            )
             console.print("Examples:")
-            console.print("  /workspace copy file.txt container:file.txt  # Host to container")
-            console.print("  /workspace copy container:file.txt file.txt  # Container to host")
+            console.print(
+                "  /workspace copy file.txt container:file.txt  # Host to container"
+            )
+            console.print(
+                "  /workspace copy container:file.txt file.txt  # Container to host"
+            )
             return False
 
 
 # Register the commands
-register_command(WorkspaceCommand()) 
+register_command(WorkspaceCommand())

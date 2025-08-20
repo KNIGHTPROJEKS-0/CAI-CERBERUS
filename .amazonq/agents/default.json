@@ -41,5 +41,6 @@
     "README.md",
     ".amazonq/rules/**/*.md"
   ],
-  "resources": []
+  "resources": [],
+  "promptHooks": []
 }

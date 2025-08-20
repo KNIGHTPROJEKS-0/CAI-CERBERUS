@@ -1,0 +1,44 @@
+external_tools:
+  reconnaissance:
+    nmap:
+      path: /Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/external-tools/reconnaissance/nmap
+      description: Network discovery and security auditing
+      capabilities: [port_scanning, service_detection, os_fingerprinting]
+      
+    subfinder:
+      path: /Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/external-tools/reconnaissance/subfinder
+      description: Subdomain discovery tool
+      capabilities: [subdomain_enumeration, passive_reconnaissance]
+      
+    amass:
+      path: /Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/external-tools/reconnaissance/Amass
+      description: Attack surface mapping
+      capabilities: [asset_discovery, network_mapping, dns_enumeration]
+      
+    metabigor:
+      path: /Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/external-tools/reconnaissance/metabigor
+      description: OSINT tool for intelligence gathering
+      capabilities: [osint_gathering, no_api_required, passive_intelligence]
+      
+    redeye:
+      path: /Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/external-tools/reconnaissance/RedEye
+      description: Collaborative penetration testing platform
+      capabilities: [collaborative_testing, reporting, campaign_management]
+
+  vulnerability:
+    nuclei:
+      path: /Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/external-tools/vulnerability/nuclei
+      description: Fast and customizable vulnerability scanner
+      capabilities: [vulnerability_scanning, template_based, high_speed]
+      
+    sqlmap:
+      path: /Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/external-tools/vulnerability/sqlmap
+      description: SQL injection testing tool
+      capabilities: [sql_injection_testing, database_enumeration, exploitation]
+
+validation_rules:
+  - require_explicit_permission
+  - validate_target_authorization
+  - maintain_audit_logs
+  - respect_rate_limits
+  - sandbox_execution

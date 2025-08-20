@@ -1,0 +1,255 @@
+# Docker Compose for CAI-CERBERUS Unified Stack
+
+services:
+  # CAI-CERBERUS Core Framework (lightweight)
+  cai-cerberus:
+    build:
+      context: .
+      dockerfile: Dockerfile.core
+    container_name: cai-cerberus-core
+    ports:
+      - "8000:8000"    # Main API
+    environment:
+      # Core Framework
+      - CERBERUS_MODEL=WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+      - CERBERUS_WORKSPACE_DIR=/app/workspaces
+      - CERBERUS_AUDIT_DIR=/app/audit
+      - CERBERUS_EXTERNAL_TOOLS_DIR=/app/external-tools
+      
+      # Model Endpoints
+      - LITELLM_PROXY_URL=http://litellm:4000
+      - WHITERABBITNEO_API_BASE=http://whiterabbitneo:8080/v1
+      - CERBERUS_LITELLM_ENABLED=true
+      
+      # Database connections
+      - DATABASE_URL=postgresql://litellm:password@postgres:5432/litellm
+      - REDIS_URL=redis://redis:6379/0
+      
+      # API Keys (passed through)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      
+      # Railway & External
+      - RAILWAY_ENVIRONMENT=${RAILWAY_ENVIRONMENT:-development}
+      - RAILWAY_TOKEN=${RAILWAY_TOKEN}
+      - RAILWAY_PROJECT_ID=${RAILWAY_PROJECT_ID}
+    volumes:
+      - ./workspaces:/app/workspaces
+      - ./audit:/app/audit
+      - ./external-tools:/app/external-tools
+      - ./configs:/app/configs
+    depends_on:
+      - postgres
+      - redis
+      - litellm
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # LiteLLM Proxy (separate container for Docker Offload)
+  litellm:
+    build:
+      context: .
+      dockerfile: Dockerfile.litellm
+    platform: linux/arm64
+    container_name: litellm-proxy
+    ports:
+      - "4000:4000"
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-cerberus-2024}
+      - DATABASE_URL=postgresql://litellm:password@postgres:5432/litellm
+      
+      # All Model Provider API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - HUGGINGFACE_API_TOKEN=${HUGGINGFACE_API_TOKEN}
+      
+      # WhiteRabbitNeo endpoint
+      - WHITERABBITNEO_API_BASE=http://whiterabbitneo:8080/v1
+      # llama-cpp-python endpoint (OpenAI-compatible)
+      - LLAMACPP_API_BASE=http://llamacpp:8081/v1
+    command: ["litellm", "--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
+    depends_on:
+      - postgres
+      - llamacpp
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # WhiteRabbitNeo Model Runner (Docker Offload for heavy model)
+  whiterabbitneo:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: whiterabbitneo-runner
+    ports:
+      - "8080:8080"
+    environment:
+      - HF_TOKEN=${HUGGINGFACE_API_TOKEN}
+      - HUGGING_FACE_HUB_TOKEN=${HUGGINGFACE_API_TOKEN}
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    command:
+      - "--hf-repo"
+      - "shinigami92g/WhiteRabbitNeo-13B-v1-Q4_0-GGUF"
+      - "--hf-file"
+      - "whiterabbitneo-13b-v1-q4_0.gguf"
+      - "-c"
+      - "4096"
+      - "-t"
+      - "8"
+      - "-ngl"
+      - "0"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          memory: 8G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/v1/models | grep -E '^(200)$'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # llama-cpp-python Model Runner (Docker Offload / OpenAI-compatible)
+  llamacpp:
+    image: ghcr.io/abetlen/llama-cpp-python:latest
+    container_name: llamacpp-python
+    ports:
+      - "8081:8081"
+    environment:
+      - HF_TOKEN=${HUGGINGFACE_API_TOKEN}
+      - HUGGING_FACE_HUB_TOKEN=${HUGGINGFACE_API_TOKEN}
+    volumes:
+      - ./models:/models
+      - hf_cache:/root/.cache/huggingface
+    command:
+      - "python3"
+      - "-m"
+      - "llama_cpp.server"
+      - "--model"
+      - "/models/whiterabbitneo-13b-v1-q4_0.gguf"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8081"
+      - "--n_ctx"
+      - "4096"
+      - "--n_threads"
+      - "8"
+      - "--n_gpu_layers"
+      - "0"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          memory: 8G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/v1/models | grep -E '^(200)$'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # N8N Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-cerberus
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-cerberus2024}
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=UTC
+      - N8N_SECURE_COOKIE=false
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=litellm
+      - DB_POSTGRESDB_PASSWORD=password
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./integrations/n8n:/home/node/custom-nodes
+    depends_on:
+      - postgres
+      - cai-cerberus
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-cerberus
+    environment:
+      - POSTGRES_DB=litellm
+      - POSTGRES_USER=litellm
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cerberus
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+  hf_cache:
+
+networks:
+  default:
+    driver: bridge
+    name: cerberus-network

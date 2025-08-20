@@ -1,210 +1,338 @@
 # External Tools for CAI-CERBERUS
 
-This directory contains external security tools and frameworks integrated with CAI-CERBERUS. Each tool is organized by category and includes safety adapters for secure operation.
+This directory contains external tools and integrations for the CAI-CERBERUS framework.
 
 ## Directory Structure
 
 ```
 external-tools/
-├── reconnaissance/
-│   └── RedEye/                 # OSINT reconnaissance tool
-├── supergateway/               # MCP gateway for protocol bridging
-├── litellm/                    # LiteLLM proxy for unified LLM access
-├── vulnerability/              # Vulnerability assessment tools
-├── exploitation/               # Controlled exploitation frameworks
-├── analysis/                   # Analysis and forensics tools
-└── README.md                   # This file
+├── litellm/           # LiteLLM proxy for multi-model AI access
+├── mcp/               # Model Context Protocol servers
+├── supergateway/      # Protocol gateway for MCP transport
+├── datasets/          # Code Functions and cybersecurity datasets
+├── reconnaissance/    # Reconnaissance and OSINT tools
+├── vulnerability/     # Vulnerability scanning tools
+├── analysis/          # Analysis and forensics tools
+├── exploitation/      # Exploitation frameworks (ethical use only)
+└── workflows/         # N8N workflow automation
 ```
 
-## Integrated Tools
+## Available Tools
 
-### MCP Gateway - Supergateway
-**Location**: `external-tools/supergateway/`
-**Purpose**: Model Context Protocol gateway for stdio-to-SSE/WS/HTTP bridging
-**Adapter**: `tools/mcp/supergateway_adapter.py`
+### 🤖 AI and Model Integration
+- **WhiteRabbitNeo 13B** - Cybersecurity-focused language model via TGI and transformers
+- **Code Functions** - Cybersecurity and general code generation datasets
+- **LiteLLM** - Multi-provider AI model proxy with cost tracking and safety controls
+- **MCP Servers** - Model Context Protocol servers for various capabilities
+- **SuperGateway** - Protocol translation gateway for MCP transport
 
-**Features**:
-- stdio-to-SSE gateway for MCP servers
-- SSE-to-stdio for remote MCP integration
-- StreamableHTTP support (stateful/stateless)
-- WebSocket transport bridging
-- Built-in security validation and audit logging
+### 🔍 Reconnaissance Tools
+- **Metabigor** - Intelligence tool for OSINT tasks without API keys
+- **Nmap** - Network discovery and security auditing
+- **Subfinder** - Subdomain discovery tool
+- **Amass** - In-depth attack surface mapping
+- **RedEye** - Collaborative penetration testing platform
 
-**Usage**:
+### 🛡️ Vulnerability Assessment
+- **Nuclei** - Fast and customizable vulnerability scanner
+- **SQLMap** - Automatic SQL injection and database takeover tool
+
+### 📊 Analysis Tools
+- **Custom analyzers** - Specialized analysis tools for security assessment
+
+### 🔄 Workflow Automation
+- **N8N** - Visual workflow automation and orchestration platform
+- **Railway** - Cloud deployment and hosting integration
+- **Docker Offload** - Cloud-based container execution for heavy workloads
+
+### 📈 Datasets
+- **Code-Functions-Level-Cyber** - Cybersecurity code generation dataset
+- **Code-Functions-Level-General** - General purpose code generation dataset
+
+## Quick Start
+
+### 1. Setup All Tools
+```bash
+# Setup WhiteRabbitNeo and transformers
+make transformers-setup
+
+# Setup Code Functions datasets
+make code-functions-setup
+
+# Setup LiteLLM
+make litellm-setup
+
+# Setup MCP servers
+make mcp-setup
+
+# Setup SuperGateway
+make gateway-setup
+
+# Setup Metabigor OSINT tool
+make metabigor-setup
+
+# Setup N8N workflows
+make n8n-setup
+```
+
+### 2. Start Services
+```bash
+# Start entire CAI-CERBERUS stack
+make stack-start
+
+# Or start individual services:
+# Start WhiteRabbitNeo TGI
+make whiterabbitneo-start
+
+# Start LiteLLM proxy
+make litellm-start
+
+# Start N8N workflows
+make n8n-start
+
+# Start MCP servers
+make mcp-start
+
+# Start SuperGateway
+make gateway-start
+```
+
+### 3. Verify Installation
+```bash
+# Check entire stack status
+make stack-status
+
+# Or check individual services:
+# Check WhiteRabbitNeo TGI
+curl http://localhost:8080/health
+
+# Check LiteLLM
+curl http://localhost:4000/health
+
+# Check N8N
+curl http://localhost:5678/healthz
+
+# Check SuperGateway
+curl http://localhost:3000/health
+
+# Check MCP servers
+make mcp-status
+
+# Test Code Functions
+make code-functions-test
+```
+
+## Integration with CAI-CERBERUS
+
+### Environment Configuration
+```bash
+# WhiteRabbitNeo Integration
+export WHITERABBITNEO_MODEL_PATH=WhiteRabbitNeo/WhiteRabbitNeo-13B
+export WHITERABBITNEO_TGI_URL=http://localhost:8080
+export WHITERABBITNEO_DEVICE=cuda  # or cpu
+
+# Code Functions Integration
+export CODE_FUNCTIONS_CYBER_PATH=./external-tools/datasets/code-functions-level-cyber
+export CODE_FUNCTIONS_GENERAL_PATH=./external-tools/datasets/code-functions-level-general
+
+# LiteLLM Integration
+export CERBERUS_MODEL=litellm/gpt-4o-mini
+export LITELLM_PROXY_URL=http://localhost:4000
+export LITELLM_MASTER_KEY=your-master-key
+
+# N8N Integration
+export N8N_HOST=localhost
+export N8N_PORT=5678
+export N8N_PROTOCOL=http
+
+# MCP Integration
+export CERBERUS_MCP_ENABLED=true
+export CERBERUS_MCP_SERVERS_DIR=./external-tools/mcp
+
+# SuperGateway Integration
+export CERBERUS_MCP_GATEWAY_URL=http://localhost:3000
+export CERBERUS_MCP_GATEWAY_ENABLED=true
+
+# Railway Cloud Integration
+export RAILWAY_TOKEN=your-railway-token
+export RAILWAY_PROJECT_ID=your-project-id
+```
+
+### Usage Examples
+
+#### Using WhiteRabbitNeo for Cybersecurity Analysis
 ```python
-from tools.mcp.supergateway_adapter import SupergatewayTool
+from tools.huggingface.transformers_adapter import TransformersAdapter
 
-gateway = SupergatewayTool()
-result = await gateway.execute(
-    action="start_sse_gateway",
-    mcp_server_command="npx -y @modelcontextprotocol/server-filesystem ./workspaces",
-    port=8000
+# Create WhiteRabbitNeo agent
+whiterabbit = TransformersAdapter(
+    model_name="WhiteRabbitNeo/WhiteRabbitNeo-13B",
+    device="cuda"
+)
+
+# Analyze security code
+result = await whiterabbit.analyze_code(
+    "Analyze this network scanning script for vulnerabilities",
+    code_snippet
 )
 ```
 
-**Safety Features**:
-- Command validation and blocking of dangerous operations
+#### Using Code Functions for Code Generation
+```python
+from tools.huggingface.code_functions_adapter import CodeFunctionsAdapter
+
+# Create code generation agent
+code_gen = CodeFunctionsAdapter()
+
+# Generate cybersecurity code
+result = await code_gen.generate_code(
+    "Create a secure network scanner function",
+    domain="cybersecurity"
+)
+```
+
+#### Using LiteLLM with CAI-CERBERUS
+```python
+from cai import Agent
+from tools.proxy.cerberus_litellm import CerberusLiteLLMAgent
+
+# Create LiteLLM-powered agent
+agent = CerberusLiteLLMAgent()
+
+# Use multiple models with cost tracking
+result = await agent.complete_task(
+    "Analyze this network scan",
+    model="litellm/gpt-4o-mini"
+)
+```
+
+#### Using MCP Servers
+```python
+from tools.mcp.supergateway_adapter import SuperGatewayAdapter
+
+# Connect to filesystem server via SuperGateway
+gateway = SuperGatewayAdapter()
+files = await gateway.call_gateway(
+    "sse", 
+    "/mcp/filesystem", 
+    "list_files", 
+    {"path": "/workspace"}
+)
+```
+
+## Tool-Specific Documentation
+
+- [WhiteRabbitNeo Integration](../docs/whiterabbitneo.md)
+- [Code Functions Datasets](datasets/README.md)
+- [LiteLLM Setup and Usage](litellm/README.md)
+- [N8N Workflow Automation](workflows/README.md)
+- [MCP Servers Configuration](mcp/README.md)
+- [SuperGateway Integration](supergateway/README.md)
+- [Metabigor OSINT Tool](reconnaissance/metabigor/README.md)
+- [Reconnaissance Tools](reconnaissance/README.md)
+- [Vulnerability Scanners](vulnerability/README.md)
+
+## Security Considerations
+
+### Access Controls
+- All tools run with minimal required permissions
+- Network access is restricted to necessary endpoints
+- File system access is sandboxed to designated directories
+
+### Audit and Compliance
+- All tool operations are logged for audit purposes
+- Cost tracking and budget limits prevent abuse
 - Human approval gates for sensitive operations
-- Process isolation and timeout protection
-- Complete audit trail of all gateway operations
-- Resource limits and port restrictions
 
-### OSINT - RedEye
-**Location**: `external-tools/reconnaissance/RedEye/`
-**Purpose**: Open Source Intelligence gathering
-**Adapter**: `tools/osint/redeye_adapter.py`
+### Safe Usage Guidelines
+1. **Only use on systems you own or have explicit permission to test**
+2. **Follow all applicable laws and regulations**
+3. **Implement proper access controls and monitoring**
+4. **Regular security updates and vulnerability assessments**
 
-**Features**:
-- Domain reconnaissance and enumeration
-- Social media intelligence gathering
-- Email and contact discovery
-- Technology stack identification
+## Troubleshooting
 
-**Safety Features**:
-- Target validation and whitelist checking
-- Rate limiting and request throttling
-- Sandboxed execution environment
-- Human approval for sensitive targets
+### Common Issues
 
-## Installation Guide
+1. **Port conflicts**
+   - WhiteRabbitNeo TGI: Change port 8080 in docker-compose.yml
+   - LiteLLM: Change port 4000 in docker-compose.yml
+   - N8N: Change port 5678 in docker-compose.yml
+   - SuperGateway: Set PORT environment variable
+   - MCP servers: Configure different ports in servers.json
 
-### Prerequisites
-- Python 3.12+
-- Node.js 24+ (for supergateway)
-- Git for cloning repositories
-- Virtual environment (recommended)
+2. **Permission errors**
+   - Check file/directory permissions
+   - Verify Docker daemon is running
+   - Ensure user has necessary privileges
 
-### Installing Tools
+3. **Network connectivity**
+   - Check firewall settings
+   - Verify DNS resolution
+   - Test network connectivity to external services
 
-1. **LiteLLM (Proxy Gateway)**:
-```bash
-cd external-tools/litellm
-git clone https://github.com/BerriAI/litellm .
-echo 'LITELLM_MASTER_KEY="sk-cerberus-$(openssl rand -hex 16)"' > .env
-echo 'LITELLM_SALT_KEY="$(openssl rand -hex 32)"' >> .env
-docker-compose up -d
-```
+### Getting Help
 
-2. **Supergateway (MCP Gateway)**:
-```bash
-cd external-tools/supergateway
-npm install
-npm run build
-```
+1. **Check logs**
+   ```bash
+   # All stack logs
+   make stack-logs
+   
+   # Individual service logs
+   docker compose logs whiterabbitneo-tgi
+   docker compose logs litellm
+   docker compose logs n8n
+   
+   # MCP server logs
+   tail -f external-tools/mcp/logs/*.log
+   
+   # SuperGateway logs
+   tail -f external-tools/supergateway/logs/*.log
+   ```
 
-3. **RedEye (OSINT)**:
-```bash
-cd external-tools/reconnaissance
-git clone https://github.com/cisagov/RedEye.git
-cd RedEye
-chmod +x redeye.py
-pip install -r requirements.txt
-```
+2. **Health checks**
+   ```bash
+   # Test all services
+   make stack-status
+   make transformers-test
+   make code-functions-test
+   make litellm-test
+   make mcp-status
+   make gateway-status
+   ```
 
-### Adding New Tools
-
-1. **Clone the tool** into appropriate category directory:
-```bash
-cd external-tools/[category]
-git clone [tool-repository-url]
-```
-
-2. **Create safety adapter** in `tools/[category]/[tool]_adapter.py`:
-```python
-class ToolAdapter:
-    def __init__(self):
-        self.tool_path = Path("external-tools/[category]/[tool]")
-        self.audit_log = []
-    
-    async def validate_target(self, target: str) -> bool:
-        # Implement target validation
-        pass
-    
-    async def execute_safely(self, command: str, **kwargs):
-        # Implement safe execution with logging
-        pass
-```
-
-3. **Add agent configuration** in `configs/agents/[tool].yaml`:
-```yaml
-name: "Tool Agent"
-role: "tool_operator"
-tools:
-  - name: "tool_adapter"
-    path: "tools.[category].[tool]_adapter.ToolAdapter"
-constraints:
-  require_approval: true
-  sandbox_mode: true
-```
-
-## Security Guidelines
-
-### Tool Integration Requirements
-- All tools MUST have safety adapters with validation
-- Human approval required for sensitive operations
-- Complete audit logging of all actions
-- Sandboxed execution where possible
-- Resource limits and timeout protection
-
-### Validation Patterns
-- Target whitelist checking
-- Command sanitization and blocking
-- Rate limiting and throttling
-- Process isolation and monitoring
-- Error handling and rollback capability
-
-### Audit Requirements
-- Log all tool invocations with timestamps
-- Record human approval decisions
-- Track resource usage and performance
-- Maintain chain of custody for evidence
-- Enable compliance reporting and review
-
-## Agent Operation Guidelines
-
-### For LLMs/Agents using these tools:
-
-1. **Always validate** tool permissions before execution
-2. **Request approval** for sensitive or destructive operations
-3. **Log all actions** for audit trail and compliance
-4. **Respect rate limits** and resource constraints
-5. **Handle errors gracefully** with proper rollback
-6. **Report anomalies** immediately to human operators
-
-### Tool Discovery Pattern:
-```python
-# Agents should discover tools in this directory structure
-tool_categories = {
-    "reconnaissance": ["RedEye"],
-    "mcp_gateway": ["supergateway"],
-    "vulnerability": [],  # Add as tools are integrated
-    "exploitation": [],   # Add as tools are integrated
-    "analysis": []        # Add as tools are integrated
-}
-```
-
-## Compliance and Legal
-
-- Use only on systems you own or have explicit permission to test
-- Comply with all applicable laws and regulations
-- Maintain proper documentation and audit trails
-- Report any security violations or anomalies
-- Follow organizational policies and procedures
+3. **Reset and restart**
+   ```bash
+   # Stop all services
+   make stack-stop
+   
+   # Clean and restart
+   make clean install
+   make stack-start
+   
+   # Or individual services
+   make litellm-stop mcp-stop gateway-stop
+   make litellm-start mcp-start gateway-start
+   ```
 
 ## Contributing
 
-When adding new tools:
-1. Follow the directory structure and naming conventions
-2. Create comprehensive safety adapters with validation
-3. Include proper documentation and usage examples
-4. Test thoroughly in isolated environments
-5. Submit pull requests with security review
+When adding new external tools:
 
-## Support
+1. Create appropriate directory structure
+2. Include comprehensive README.md
+3. Add setup and management scripts
+4. Update main Makefile with new targets
+5. Document integration with CAI-CERBERUS
+6. Include security considerations
+7. Add troubleshooting information
 
-For issues with tool integration:
-1. Check the tool's original documentation
-2. Review the safety adapter implementation
-3. Examine audit logs for error details
-4. Consult the CAI-CERBERUS documentation
-5. Open an issue with detailed reproduction steps
+## License and Compliance
+
+External tools may have different licenses and usage restrictions. Always review and comply with:
+
+- Individual tool licenses
+- Export control regulations
+- Local laws and regulations
+- Organizational policies
+- Ethical guidelines for security research

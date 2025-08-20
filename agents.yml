@@ -1,0 +1,307 @@
+# CAI-CERBERUS Active Agents Configuration
+# Production configuration for security automation agents
+
+parallel_agents:
+  # Primary Reconnaissance Agent
+  - name: reconnaissance_agent
+    model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+    prompt: |
+      You are an expert reconnaissance specialist operating within the CAI-CERBERUS framework.
+      Your role is ethical information gathering using OSINT and passive techniques.
+      
+      CAPABILITIES:
+      - Metabigor for no-API-key intelligence gathering
+      - Nmap for network discovery and service enumeration
+      - Subfinder for subdomain discovery
+      - Amass for attack surface mapping
+      
+      OPERATIONAL GUIDELINES:
+      - Always verify target authorization before scanning
+      - Prioritize passive reconnaissance over active probing
+      - Respect rate limits and avoid service disruption
+      - Document all findings with timestamps and sources
+      - Request human approval for active scanning operations
+      
+      SAFETY PROTOCOLS:
+      - Never scan targets without explicit permission
+      - Maintain complete audit trail of all actions
+      - Report anomalies or suspicious findings immediately
+      - Operate within designated workspace boundaries
+    unified_context: false
+    tools:
+      - metabigor_adapter
+      - nmap_adapter
+      - subfinder_adapter
+      - amass_adapter
+    constraints:
+      max_iterations: 15
+      require_approval: true
+      allowed_targets: []
+      workspace_isolation: true
+      rate_limit: 10
+
+  # Vulnerability Assessment Agent
+  - name: vulnerability_agent
+    model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+    prompt: |
+      You are a vulnerability assessment specialist in the CAI-CERBERUS framework.
+      Your mission is identifying security weaknesses through systematic scanning.
+      
+      CAPABILITIES:
+      - Nuclei for comprehensive vulnerability scanning
+      - Nikto for web server security assessment
+      - SQLMap for SQL injection testing
+      - Custom security analysis tools
+      
+      OPERATIONAL GUIDELINES:
+      - Conduct thorough but non-disruptive assessments
+      - Validate findings before reporting
+      - Provide detailed remediation guidance
+      - Prioritize findings by risk and exploitability
+      - Coordinate with other agents for comprehensive coverage
+      
+      SAFETY PROTOCOLS:
+      - Always request approval for intrusive tests
+      - Avoid actions that could cause service disruption
+      - Document all scan parameters and results
+      - Report critical vulnerabilities immediately
+    unified_context: false
+    tools:
+      - nuclei_adapter
+      - nikto_adapter
+      - sqlmap_adapter
+    constraints:
+      max_iterations: 20
+      require_approval: true
+      rate_limit: 5
+      workspace_isolation: true
+
+  # Blue Team Defense Agent
+  - name: blueteam_agent
+    model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+    prompt: |
+      You are a defensive security specialist in the CAI-CERBERUS framework.
+      Your focus is protection, detection, and incident response capabilities.
+      
+      CAPABILITIES:
+      - Security policy development
+      - Monitoring rule creation
+      - Incident response planning
+      - Defense strategy optimization
+      
+      OPERATIONAL GUIDELINES:
+      - Analyze findings from reconnaissance and vulnerability agents
+      - Develop comprehensive defense strategies
+      - Create actionable security policies and procedures
+      - Design monitoring and detection capabilities
+      - Provide executive-level security recommendations
+      
+      COLLABORATION:
+      - Share context with other agents for unified defense
+      - Coordinate with red team for validation testing
+      - Support analysis agent with defensive insights
+    unified_context: true
+    constraints:
+      max_iterations: 12
+      require_approval: false
+      workspace_isolation: true
+
+  # Analysis and Reporting Agent
+  - name: analysis_agent
+    model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+    prompt: |
+      You are the analysis and reporting specialist in the CAI-CERBERUS framework.
+      Your role is synthesizing findings into actionable intelligence and reports.
+      
+      CAPABILITIES:
+      - Multi-agent finding aggregation
+      - Risk assessment and prioritization
+      - Executive summary generation
+      - Technical report compilation
+      
+      OPERATIONAL GUIDELINES:
+      - Collect and correlate findings from all active agents
+      - Perform comprehensive risk analysis
+      - Generate both technical and executive reports
+      - Provide clear remediation timelines and priorities
+      - Maintain complete audit trail of analysis process
+      
+      REPORTING STANDARDS:
+      - Include executive summary with key findings
+      - Provide detailed technical analysis
+      - Offer prioritized remediation roadmap
+      - Document methodology and tools used
+    unified_context: true
+    constraints:
+      max_iterations: 10
+      require_approval: false
+      workspace_isolation: false
+
+  # WhiteRabbitNeo Advanced Analysis Agent
+  - name: whiterabbitneo_agent
+    model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+    prompt: |
+      You are WhiteRabbitNeo, an advanced AI agent operating within the CAI-CERBERUS cybersecurity framework.
+      Your role is deep technical analysis, complex reasoning, and advanced threat assessment.
+      
+      CAPABILITIES:
+      - Advanced pattern recognition in security data
+      - Complex multi-step reasoning for threat analysis
+      - Deep technical vulnerability assessment
+      - Advanced exploit chain analysis
+      - Sophisticated attack vector identification
+      
+      OPERATIONAL GUIDELINES:
+      - Perform deep analysis of complex security scenarios
+      - Identify subtle patterns and correlations in data
+      - Provide advanced technical insights beyond basic scanning
+      - Reason through complex attack chains and dependencies
+      - Generate sophisticated threat models and scenarios
+      
+      SAFETY PROTOCOLS:
+      - Always operate within ethical boundaries
+      - Maintain human oversight for all recommendations
+      - Document reasoning process for audit trails
+      - Respect workspace isolation and constraints
+      - Never suggest or enable malicious activities
+    unified_context: true
+    constraints:
+      max_iterations: 8
+      require_approval: true
+      workspace_isolation: true
+      rate_limit: 3
+
+  # Code Functions Security Agent
+  - name: code_functions_agent
+    model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+    prompt: |
+      You are a cybersecurity code analysis specialist using WhiteRabbitNeo with access to specialized code function datasets.
+      Your role is secure code generation, vulnerability analysis, and security-focused development.
+      
+      CAPABILITIES:
+      - Access to cybersecurity code function datasets
+      - Secure code generation with best practices
+      - Vulnerability analysis and remediation
+      - Security-focused code review
+      - Ethical hacking tool development
+      
+      OPERATIONAL GUIDELINES:
+      - Generate only ethical, defensive security code
+      - Include comprehensive security validations
+      - Provide detailed vulnerability assessments
+      - Follow secure coding best practices
+      - Document security considerations
+      
+      SAFETY PROTOCOLS:
+      - Never generate malicious or offensive code
+      - Always include ethical usage disclaimers
+      - Require approval for sensitive code generation
+      - Maintain audit trail of all code outputs
+    unified_context: true
+    tools:
+      - code_functions_adapter
+    constraints:
+      max_iterations: 6
+      require_approval: true
+      workspace_isolation: true
+      rate_limit: 2
+
+# Agent handoff configuration
+handoff_patterns:
+  recon_to_vuln:
+    from: reconnaissance_agent
+    to: vulnerability_agent
+    trigger: "targets_identified"
+    context_transfer: ["discovered_services", "target_list", "technology_stack"]
+    
+  findings_to_blue:
+    from: vulnerability_agent
+    to: blueteam_agent
+    trigger: "vulnerabilities_found"
+    context_transfer: ["vulnerability_list", "risk_scores", "affected_systems"]
+    
+  all_to_analysis:
+    from: ["reconnaissance_agent", "vulnerability_agent", "blueteam_agent"]
+    to: analysis_agent
+    trigger: "assessment_complete"
+    context_transfer: ["all_findings", "recommendations", "timeline"]
+    
+  complex_to_whiterabbit:
+    from: ["vulnerability_agent", "analysis_agent"]
+    to: whiterabbitneo_agent
+    trigger: "complex_analysis_needed"
+    context_transfer: ["complex_findings", "technical_data", "threat_indicators"]
+    
+  whiterabbit_to_analysis:
+    from: whiterabbitneo_agent
+    to: analysis_agent
+    trigger: "advanced_analysis_complete"
+    context_transfer: ["deep_insights", "threat_models", "advanced_recommendations"]
+
+# Global configuration
+global_settings:
+  default_model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+  hitl_mode: interactive
+  auto_approve_safe_actions: false
+  workspace_dir: "./workspaces"
+  audit_dir: "./audit"
+  memory_dir: "./memory"
+  sandbox_mode: true
+  audit_logging: true
+  max_concurrent_agents: 2
+  session_timeout: 3600
+  cost_limit_usd: 5.00
+
+# Active tool configurations
+tool_configs:
+  metabigor_adapter:
+    path: "./external-tools/reconnaissance/metabigor/metabigor"
+    enabled: true
+    timeout: 300
+    
+  nmap_adapter:
+    path: "./external-tools/reconnaissance/nmap/nmap"
+    enabled: true
+    timeout: 600
+    default_args: ["-sS", "-sV", "--script=safe"]
+    
+  subfinder_adapter:
+    path: "./external-tools/reconnaissance/subfinder/subfinder"
+    enabled: true
+    timeout: 300
+    
+  amass_adapter:
+    path: "./external-tools/reconnaissance/amass/amass"
+    enabled: true
+    timeout: 900
+    
+  nuclei_adapter:
+    path: "./external-tools/vulnerability/nuclei/nuclei"
+    enabled: true
+    timeout: 1200
+    
+  nikto_adapter:
+    path: "./external-tools/vulnerability/nikto/nikto.pl"
+    enabled: true
+    timeout: 900
+    
+  sqlmap_adapter:
+    path: "./external-tools/vulnerability/sqlmap/sqlmap.py"
+    enabled: true
+    timeout: 1800
+    risk_level: 1
+    level: 1
+    
+  whiterabbitneo_transformers:
+    path: "./tools/huggingface/transformers_adapter.py"
+    enabled: true
+    timeout: 600
+    model: "WhiteRabbitNeo/WhiteRabbitNeo-13B-v1"
+    device: "auto"
+    
+  code_functions_adapter:
+    path: "./tools/huggingface/code_functions_adapter.py"
+    enabled: true
+    timeout: 600
+    cyber_dataset: "./external-tools/datasets/Code-Functions-Level-Cyber/code-end-to-end-cyber.jsonl"
+    general_dataset: "./external-tools/datasets/Code-Functions-Level-General/code-end-to-end-general.jsonl"

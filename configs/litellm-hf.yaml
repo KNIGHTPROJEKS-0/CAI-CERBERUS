@@ -1,0 +1,55 @@
+model_list:
+  - model_name: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+    litellm_params:
+      model: openai/whiterabbitneo
+      api_base: ${WHITERABBITNEO_API_BASE}
+      custom_llm_provider: openai
+      api_key: "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"
+      max_tokens: 4096
+      temperature: 0.7
+      stream: true
+
+  - model_name: whiterabbitneo
+    litellm_params:
+      model: openai/whiterabbitneo
+      api_base: ${WHITERABBITNEO_API_BASE}
+      custom_llm_provider: openai
+      api_key: "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"
+      max_tokens: 4096
+      temperature: 0.7
+      stream: true
+
+  # Local llama-cpp-python via OpenAI-compatible API (Docker Offload)
+  - model_name: llamacpp
+    litellm_params:
+      model: openai/llamacpp
+      api_base: ${LLAMACPP_API_BASE}
+      custom_llm_provider: openai
+      api_key: "no_key"
+      max_tokens: 4096
+      temperature: 0.7
+      stream: true
+
+  - model_name: local/whiterabbitneo-gguf
+    litellm_params:
+      model: openai/whiterabbitneo-gguf
+      api_base: ${LLAMACPP_API_BASE}
+      custom_llm_provider: openai
+      api_key: "no_key"
+      max_tokens: 4096
+      temperature: 0.7
+      stream: true
+
+litellm_settings:
+  success_callback: ["prometheus"]
+  failure_callback: ["prometheus"]
+  cache: true
+  cache_params:
+    type: "redis"
+    host: "redis"
+    port: 6379
+    
+general_settings:
+  master_key: ${LITELLM_MASTER_KEY}
+  database_url: ${DATABASE_URL}
+  store_model_in_db: true

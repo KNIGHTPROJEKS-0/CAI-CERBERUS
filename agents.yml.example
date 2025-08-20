@@ -1,30 +1,227 @@
-# Example agents.yml configuration file
-# This file is auto-loaded when CAI starts
-# Copy this to agents.yml and customize for your needs
+# CAI-CERBERUS Agents Configuration Example
+# Copy this to agents.yml and customize for your security automation needs
+
+# =============================================================================
+# PARALLEL AGENTS CONFIGURATION
+# =============================================================================
 
 parallel_agents:
-  # Each agent can have a name, optional model, optional prompt, and optional unified_context
-  - name: one_tool_agent
-    model: claude-sonnet-4-20250514
-    prompt: "Focus on finding vulnerabilities and security issues"
-    unified_context: false  # Each agent has its own message history (default)
-    
+  # Reconnaissance Agent - OSINT and Discovery
+  - name: reconnaissance_agent
+    model: litellm/gpt-4o-mini
+    prompt: |
+      You are a reconnaissance specialist focused on ethical information gathering.
+      Use OSINT tools like Metabigor, Nmap, Subfinder, and Amass for discovery.
+      Always respect target permissions and follow responsible disclosure.
+      Prioritize passive reconnaissance over active scanning.
+    unified_context: false
+    tools:
+      - metabigor_adapter
+      - nmap_adapter
+      - subfinder_adapter
+      - amass_adapter
+    constraints:
+      max_iterations: 15
+      require_approval: true
+      allowed_targets: []
+      workspace_isolation: true
+
+  # Vulnerability Assessment Agent
+  - name: vulnerability_agent
+    model: litellm/gpt-4o-mini
+    prompt: |
+      You are a vulnerability assessment specialist.
+      Use tools like Nuclei, Nikto, and SQLMap to identify security weaknesses.
+      Focus on comprehensive scanning while avoiding disruption.
+      Provide detailed remediation recommendations.
+    unified_context: false
+    tools:
+      - nuclei_adapter
+      - nikto_adapter
+      - sqlmap_adapter
+    constraints:
+      max_iterations: 20
+      require_approval: true
+      rate_limit: 10
+      workspace_isolation: true
+
+  # Blue Team Defense Agent
   - name: blueteam_agent
-    model: claude-sonnet-4-20250514
-    prompt: "Focus on defensive security and mitigation strategies"
-    unified_context: false
+    model: litellm/gpt-4o-mini
+    prompt: |
+      You are a defensive security specialist focused on protection and mitigation.
+      Analyze findings from other agents and recommend defensive measures.
+      Create security policies, monitoring rules, and incident response plans.
+      Prioritize prevention and detection capabilities.
+    unified_context: true
+    tools:
+      - analysis_adapter
+      - policy_generator
+      - monitoring_adapter
+    constraints:
+      max_iterations: 10
+      require_approval: false
+      workspace_isolation: true
+
+  # Red Team Offensive Agent
+  - name: redteam_agent
+    model: litellm/gpt-4o-mini
+    prompt: |
+      You are an ethical penetration testing specialist.
+      Simulate adversary tactics while maintaining strict ethical boundaries.
+      Focus on exploitation validation and attack path analysis.
+      Always operate within authorized scope and legal boundaries.
+    unified_context: true
+    tools:
+      - exploitation_adapter
+      - payload_generator
+      - attack_simulator
+    constraints:
+      max_iterations: 12
+      require_approval: true
+      allowed_targets: []
+      workspace_isolation: true
+      ethical_mode: true
+
+  # Analysis and Reporting Agent
+  - name: analysis_agent
+    model: litellm/gpt-4o-mini
+    prompt: |
+      You are a security analysis and reporting specialist.
+      Aggregate findings from all agents and create comprehensive reports.
+      Provide risk assessments, prioritization, and executive summaries.
+      Focus on actionable intelligence and clear communication.
+    unified_context: true
+    tools:
+      - report_generator
+      - risk_analyzer
+      - visualization_adapter
+    constraints:
+      max_iterations: 8
+      require_approval: false
+      workspace_isolation: false
+
+# =============================================================================
+# AGENT HANDOFF PATTERNS
+# =============================================================================
+
+handoff_patterns:
+  # Sequential reconnaissance to vulnerability assessment
+  recon_to_vuln:
+    from: reconnaissance_agent
+    to: vulnerability_agent
+    trigger: "reconnaissance_complete"
+    context_transfer: ["targets", "services", "technologies"]
     
-  - name: bug_bounter_agent
-    model: alias0
-    prompt: "Search for bugs and create detailed reports"
-    unified_context: false
+  # Vulnerability findings to blue team analysis
+  vuln_to_blue:
+    from: vulnerability_agent
+    to: blueteam_agent
+    trigger: "vulnerabilities_found"
+    context_transfer: ["vulnerabilities", "risk_scores", "affected_systems"]
+    
+  # Red team validation of findings
+  findings_to_red:
+    from: vulnerability_agent
+    to: redteam_agent
+    trigger: "high_risk_findings"
+    context_transfer: ["critical_vulns", "attack_vectors", "target_info"]
+    approval_required: true
+    
+  # Final analysis and reporting
+  all_to_analysis:
+    from: ["reconnaissance_agent", "vulnerability_agent", "blueteam_agent", "redteam_agent"]
+    to: analysis_agent
+    trigger: "assessment_complete"
+    context_transfer: ["all_findings", "recommendations", "timeline"]
 
-# Example with unified context (agents share message history)
-# parallel_agents:
-#   - name: redteam_agent
-#     unified_context: true  # Share message history with other unified agents
-#   - name: blueteam_agent
-#     unified_context: true  # Share message history with other unified agents
+# =============================================================================
+# GLOBAL AGENT SETTINGS
+# =============================================================================
 
-# When 2 or more agents are configured, parallel mode is automatically enabled
-# The agents will be available for selection when you enter a prompt
+global_settings:
+  # Default model for agents without specific model
+  default_model: litellm/gpt-4o-mini
+  
+  # Human-in-the-Loop settings
+  hitl_mode: interactive
+  auto_approve_safe_actions: false
+  escalation_threshold: "medium"
+  
+  # Workspace and isolation
+  workspace_dir: "./workspaces"
+  audit_dir: "./audit"
+  memory_dir: "./memory"
+  
+  # Safety and compliance
+  sandbox_mode: true
+  compliance_mode: "strict"
+  audit_logging: true
+  
+  # Performance limits
+  max_concurrent_agents: 3
+  session_timeout: 3600
+  cost_limit_usd: 10.00
+
+# =============================================================================
+# TOOL CONFIGURATIONS
+# =============================================================================
+
+tool_configs:
+  metabigor_adapter:
+    path: "./external-tools/reconnaissance/metabigor/metabigor"
+    timeout: 300
+    rate_limit: 5
+    
+  nmap_adapter:
+    path: "./external-tools/reconnaissance/nmap/nmap"
+    default_args: ["-sS", "-O", "-A"]
+    timeout: 600
+    
+  nuclei_adapter:
+    path: "./external-tools/vulnerability/nuclei/nuclei"
+    templates_dir: "./external-tools/vulnerability/nuclei/nuclei-templates"
+    timeout: 900
+    
+  sqlmap_adapter:
+    path: "./external-tools/vulnerability/sqlmap/sqlmap.py"
+    timeout: 1200
+    risk_level: 1
+    level: 1
+
+# =============================================================================
+# EXAMPLE WORKFLOWS
+# =============================================================================
+
+workflows:
+  # Basic reconnaissance workflow
+  basic_recon:
+    description: "Basic reconnaissance of target domain"
+    agents: ["reconnaissance_agent"]
+    steps:
+      - "Passive OSINT gathering"
+      - "Subdomain enumeration"
+      - "Service discovery"
+      - "Technology identification"
+    
+  # Full security assessment
+  full_assessment:
+    description: "Comprehensive security assessment"
+    agents: ["reconnaissance_agent", "vulnerability_agent", "blueteam_agent", "analysis_agent"]
+    steps:
+      - "Reconnaissance phase"
+      - "Vulnerability assessment"
+      - "Defense analysis"
+      - "Report generation"
+    
+  # Red team exercise
+  red_team_exercise:
+    description: "Ethical penetration testing exercise"
+    agents: ["reconnaissance_agent", "vulnerability_agent", "redteam_agent", "blueteam_agent", "analysis_agent"]
+    approval_required: true
+    steps:
+      - "Target reconnaissance"
+      - "Vulnerability identification"
+      - "Exploitation validation"
+      - "Defense recommendations"
+      - "Executive reporting"

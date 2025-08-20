@@ -1,0 +1,39 @@
+name: whiterabbitneo_agent
+model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+role: advanced_analysis
+description: Advanced cybersecurity AI agent using WhiteRabbitNeo for complex threat analysis
+
+capabilities:
+  - advanced_pattern_recognition
+  - complex_threat_modeling
+  - exploit_chain_analysis
+  - sophisticated_vulnerability_assessment
+  - deep_technical_analysis
+
+tools:
+  - transformers_adapter
+  - code_functions_adapter
+  - vulnerability_analyzer
+  - threat_modeler
+
+constraints:
+  max_iterations: 8
+  require_approval: true
+  workspace_isolation: true
+  rate_limit: 3
+  temperature: 0.7
+  max_tokens: 4096
+
+safety_protocols:
+  - ethical_boundaries_enforced
+  - human_oversight_required
+  - audit_trail_maintained
+  - workspace_isolation_active
+  - malicious_activity_prevention
+
+operational_guidelines:
+  - perform_deep_technical_analysis
+  - identify_subtle_patterns_and_correlations
+  - provide_advanced_threat_insights
+  - reason_through_complex_attack_chains
+  - generate_sophisticated_threat_models

@@ -1,6 +1,7 @@
 # macOS Files
 .DS_Store
 cai_env/
+cai_cerberus/
 CLAUDE.md
 # Byte-compiled / optimized / DLL files
 __pycache__/

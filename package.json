@@ -1,0 +1,52 @@
+{
+  "name": "cai-cerberus",
+  "version": "1.0.0",
+  "description": "> **🔗 Based on CAI**: This project is derived from the original [CAI (Cybersecurity AI) framework](https://github.com/aliasrobotics/cai) by Alias Robotics. CAI-CERBERUS represents an evolution and restructuring of the original CAI concepts with enhanced safety, modularity, and operational guidance.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js",
+      "**/__tests__/**/*.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/external-tools/",
+      "/workspaces/",
+      "/audit/",
+      "/memory/"
+    ],
+    "collectCoverageFrom": [
+      "**/*.{js,py}",
+      "!**/node_modules/**",
+      "!**/external-tools/**",
+      "!**/workspaces/**"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KNIGHTPROJEKS-0/CAI-CERBERUS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/KNIGHTPROJEKS-0/CAI-CERBERUS/issues"
+  },
+  "homepage": "https://github.com/KNIGHTPROJEKS-0/CAI-CERBERUS#readme",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.5"
+  }
+}

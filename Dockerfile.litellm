@@ -1,0 +1,39 @@
+# LiteLLM Proxy Dockerfile for Docker Offload
+# Standalone container with embedded configuration
+
+FROM --platform=$BUILDPLATFORM python:3.12-slim
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+# Set non-interactive frontend
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Install LiteLLM
+RUN pip install --no-cache-dir litellm[proxy]==1.55.10
+
+# Copy LiteLLM configuration
+COPY configs/litellm-hf.yaml /app/config.yaml
+
+# Create a healthcheck script
+RUN echo '#!/bin/bash\ncurl -f http://localhost:4000/health || exit 1' > /app/healthcheck.sh && \
+    chmod +x /app/healthcheck.sh
+
+# Expose LiteLLM port
+EXPOSE 4000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /app/healthcheck.sh
+
+# Start LiteLLM proxy with embedded config
+ENTRYPOINT ["litellm"]
+CMD ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]

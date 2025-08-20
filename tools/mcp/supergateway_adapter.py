@@ -1,335 +1,271 @@
 """
-Supergateway MCP Adapter for CAI-CERBERUS
-Provides secure MCP (Model Context Protocol) gateway functionality
+SuperGateway Adapter for CAI-CERBERUS
+
+This adapter provides integration with SuperGateway for MCP protocol translation
+and multi-transport support.
 """
 
 import asyncio
 import json
-import subprocess
-import tempfile
-import time
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 import logging
+from typing import Dict, Any, Optional, List
+from pathlib import Path
+
+import httpx
+import websockets
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-class SupergatewayMCPAdapter:
-    """
-    Secure adapter for Supergateway MCP functionality in CAI-CERBERUS
-    Enables stdio-to-SSE/WS bridging with safety controls
-    """
-    
-    def __init__(self, workspace_dir: str = "./workspaces"):
-        self.workspace_dir = Path(workspace_dir)
-        self.supergateway_path = Path("external-tools/supergateway")
-        self.active_gateways: Dict[str, subprocess.Popen] = {}
-        self.audit_log = []
-        
-    async def validate_mcp_server(self, server_command: str) -> bool:
-        """Validate MCP server command for security"""
-        blocked_commands = [
-            "rm", "del", "format", "shutdown", "reboot",
-            "sudo", "su", "chmod +x", "curl", "wget"
-        ]
-        
-        for blocked in blocked_commands:
-            if blocked in server_command.lower():
-                logger.warning(f"Blocked dangerous command: {blocked}")
-                return False
-                
-        return True
-    
-    async def start_stdio_to_sse_gateway(
-        self,
-        mcp_server_command: str,
-        port: int = 8000,
-        require_approval: bool = True
-    ) -> Dict[str, Any]:
-        """Start stdio-to-SSE gateway with safety controls"""
-        
-        if not await self.validate_mcp_server(mcp_server_command):
-            raise ValueError("MCP server command failed security validation")
-            
-        if require_approval:
-            approval = input(f"Approve MCP gateway for: {mcp_server_command}? (y/N): ")
-            if approval.lower() != 'y':
-                raise PermissionError("Gateway start not approved")
-        
-        gateway_id = f"sse_{int(time.time())}"
-        
-        try:
-            # Build supergateway command
-            cmd = [
-                "npx", "-y", "supergateway",
-                "--stdio", mcp_server_command,
-                "--port", str(port),
-                "--baseUrl", f"http://localhost:{port}",
-                "--ssePath", "/sse",
-                "--messagePath", "/message",
-                "--logLevel", "info"
-            ]
-            
-            # Start gateway process
-            process = subprocess.Popen(
-                cmd,
-                cwd=self.supergateway_path,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            self.active_gateways[gateway_id] = process
-            
-            # Log the operation
-            audit_entry = {
-                "timestamp": time.time(),
-                "action": "start_stdio_to_sse_gateway",
-                "gateway_id": gateway_id,
-                "mcp_server": mcp_server_command,
-                "port": port,
-                "status": "started"
-            }
-            self.audit_log.append(audit_entry)
-            
-            return {
-                "gateway_id": gateway_id,
-                "sse_url": f"http://localhost:{port}/sse",
-                "message_url": f"http://localhost:{port}/message",
-                "status": "started",
-                "pid": process.pid
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to start gateway: {e}")
-            raise
-    
-    async def start_sse_to_stdio_gateway(
-        self,
-        sse_url: str,
-        headers: Optional[Dict[str, str]] = None,
-        require_approval: bool = True
-    ) -> Dict[str, Any]:
-        """Start SSE-to-stdio gateway for remote MCP servers"""
-        
-        if require_approval:
-            approval = input(f"Approve SSE connection to: {sse_url}? (y/N): ")
-            if approval.lower() != 'y':
-                raise PermissionError("SSE gateway not approved")
-        
-        gateway_id = f"stdio_{int(time.time())}"
-        
-        try:
-            cmd = ["npx", "-y", "supergateway", "--sse", sse_url]
-            
-            # Add headers if provided
-            if headers:
-                for key, value in headers.items():
-                    cmd.extend(["--header", f"{key}: {value}"])
-            
-            process = subprocess.Popen(
-                cmd,
-                cwd=self.supergateway_path,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            self.active_gateways[gateway_id] = process
-            
-            audit_entry = {
-                "timestamp": time.time(),
-                "action": "start_sse_to_stdio_gateway",
-                "gateway_id": gateway_id,
-                "sse_url": sse_url,
-                "status": "started"
-            }
-            self.audit_log.append(audit_entry)
-            
-            return {
-                "gateway_id": gateway_id,
-                "sse_url": sse_url,
-                "status": "started",
-                "pid": process.pid
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to start SSE gateway: {e}")
-            raise
-    
-    async def start_streamable_http_gateway(
-        self,
-        mcp_server_command: str,
-        port: int = 8000,
-        stateful: bool = False,
-        session_timeout: int = 60000,
-        require_approval: bool = True
-    ) -> Dict[str, Any]:
-        """Start stdio-to-StreamableHTTP gateway"""
-        
-        if not await self.validate_mcp_server(mcp_server_command):
-            raise ValueError("MCP server command failed security validation")
-            
-        if require_approval:
-            approval = input(f"Approve StreamableHTTP gateway for: {mcp_server_command}? (y/N): ")
-            if approval.lower() != 'y':
-                raise PermissionError("Gateway start not approved")
-        
-        gateway_id = f"http_{int(time.time())}"
-        
-        try:
-            cmd = [
-                "npx", "-y", "supergateway",
-                "--stdio", mcp_server_command,
-                "--outputTransport", "streamableHttp",
-                "--port", str(port)
-            ]
-            
-            if stateful:
-                cmd.extend(["--stateful", "--sessionTimeout", str(session_timeout)])
-            
-            process = subprocess.Popen(
-                cmd,
-                cwd=self.supergateway_path,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            self.active_gateways[gateway_id] = process
-            
-            audit_entry = {
-                "timestamp": time.time(),
-                "action": "start_streamable_http_gateway",
-                "gateway_id": gateway_id,
-                "mcp_server": mcp_server_command,
-                "port": port,
-                "stateful": stateful,
-                "status": "started"
-            }
-            self.audit_log.append(audit_entry)
-            
-            return {
-                "gateway_id": gateway_id,
-                "http_url": f"http://localhost:{port}/mcp",
-                "status": "started",
-                "stateful": stateful,
-                "pid": process.pid
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to start StreamableHTTP gateway: {e}")
-            raise
-    
-    async def stop_gateway(self, gateway_id: str) -> Dict[str, Any]:
-        """Stop a running gateway"""
-        
-        if gateway_id not in self.active_gateways:
-            raise ValueError(f"Gateway {gateway_id} not found")
-        
-        process = self.active_gateways[gateway_id]
-        
-        try:
-            process.terminate()
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-        
-        del self.active_gateways[gateway_id]
-        
-        audit_entry = {
-            "timestamp": time.time(),
-            "action": "stop_gateway",
-            "gateway_id": gateway_id,
-            "status": "stopped"
-        }
-        self.audit_log.append(audit_entry)
-        
-        return {"gateway_id": gateway_id, "status": "stopped"}
-    
-    async def list_active_gateways(self) -> List[Dict[str, Any]]:
-        """List all active gateways"""
-        
-        active = []
-        for gateway_id, process in self.active_gateways.items():
-            if process.poll() is None:  # Still running
-                active.append({
-                    "gateway_id": gateway_id,
-                    "pid": process.pid,
-                    "status": "running"
-                })
-            else:
-                active.append({
-                    "gateway_id": gateway_id,
-                    "pid": process.pid,
-                    "status": "terminated"
-                })
-        
-        return active
-    
-    async def get_audit_log(self) -> List[Dict[str, Any]]:
-        """Get audit log of all gateway operations"""
-        return self.audit_log.copy()
-    
-    async def cleanup_all_gateways(self):
-        """Emergency cleanup of all gateways"""
-        
-        for gateway_id in list(self.active_gateways.keys()):
-            try:
-                await self.stop_gateway(gateway_id)
-            except Exception as e:
-                logger.error(f"Failed to stop gateway {gateway_id}: {e}")
-        
-        logger.info("All gateways cleaned up")
+class SuperGatewayConfig(BaseModel):
+    """Configuration for SuperGateway connection"""
+    base_url: str = "http://localhost:3000"
+    timeout: int = 30
+    max_retries: int = 3
+    enable_compression: bool = True
 
-# CAI-CERBERUS Tool Interface
-class SupergatewayTool:
-    """Tool interface for CAI-CERBERUS agents"""
+class SuperGatewayAdapter:
+    """Adapter for SuperGateway MCP protocol translation"""
     
-    def __init__(self):
-        self.adapter = SupergatewayMCPAdapter()
-        self.name = "supergateway_mcp"
-        self.description = "MCP gateway for stdio-to-SSE/WS/HTTP bridging"
+    def __init__(self, config: Optional[SuperGatewayConfig] = None):
+        self.config = config or SuperGatewayConfig()
+        self.client = httpx.AsyncClient(
+            timeout=httpx.Timeout(self.config.timeout),
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+        )
+        self._ws_connections = {}
+        
+    async def __aenter__(self):
+        return self
     
-    async def execute(self, action: str, **kwargs) -> Dict[str, Any]:
-        """Execute supergateway action"""
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+    
+    async def close(self):
+        """Close all connections"""
+        await self.client.aclose()
         
-        if action == "start_sse_gateway":
-            return await self.adapter.start_stdio_to_sse_gateway(
-                kwargs.get("mcp_server_command"),
-                kwargs.get("port", 8000),
-                kwargs.get("require_approval", True)
-            )
+        # Close WebSocket connections
+        for ws in self._ws_connections.values():
+            if not ws.closed:
+                await ws.close()
+        self._ws_connections.clear()
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Check SuperGateway health status"""
+        try:
+            response = await self.client.get(f"{self.config.base_url}/health")
+            return {
+                "healthy": response.status_code == 200,
+                "status_code": response.status_code,
+                "data": response.json() if response.status_code == 200 else None
+            }
+        except Exception as e:
+            return {"healthy": False, "error": str(e)}
+    
+    async def get_available_gateways(self) -> List[Dict[str, Any]]:
+        """Get list of available gateways"""
+        try:
+            response = await self.client.get(f"{self.config.base_url}/gateways")
+            if response.status_code == 200:
+                return response.json().get("gateways", [])
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get gateways: {e}")
+            return []
+    
+    async def call_http_gateway(
+        self, 
+        endpoint: str, 
+        method: str, 
+        params: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Call MCP server through HTTP gateway"""
+        try:
+            url = f"{self.config.base_url}{endpoint}"
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": method,
+                "params": params or {}
+            }
+            
+            response = await self.client.post(url, json=payload)
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "error": {
+                        "code": response.status_code,
+                        "message": f"HTTP {response.status_code}",
+                        "data": response.text
+                    }
+                }
+                
+        except Exception as e:
+            return {
+                "error": {
+                    "code": -1,
+                    "message": str(e)
+                }
+            }
+    
+    async def connect_websocket(self, endpoint: str) -> Optional[websockets.WebSocketServerProtocol]:
+        """Connect to WebSocket gateway"""
+        try:
+            ws_url = f"ws://{self.config.base_url.replace('http://', '').replace('https://', '')}{endpoint}"
+            
+            if endpoint in self._ws_connections:
+                ws = self._ws_connections[endpoint]
+                if not ws.closed:
+                    return ws
+            
+            ws = await websockets.connect(ws_url)
+            self._ws_connections[endpoint] = ws
+            return ws
+            
+        except Exception as e:
+            logger.error(f"Failed to connect to WebSocket {endpoint}: {e}")
+            return None
+    
+    async def call_websocket_gateway(
+        self, 
+        endpoint: str, 
+        method: str, 
+        params: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Call MCP server through WebSocket gateway"""
+        try:
+            ws = await self.connect_websocket(endpoint)
+            if not ws:
+                return {"error": {"code": -1, "message": "Failed to connect to WebSocket"}}
+            
+            # Send request
+            request = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": method,
+                "params": params or {}
+            }
+            
+            await ws.send(json.dumps(request))
+            
+            # Wait for response
+            response_text = await ws.recv()
+            return json.loads(response_text)
+            
+        except Exception as e:
+            return {
+                "error": {
+                    "code": -1,
+                    "message": str(e)
+                }
+            }
+    
+    async def call_sse_gateway(
+        self, 
+        endpoint: str, 
+        method: str, 
+        params: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Call MCP server through SSE gateway"""
+        try:
+            url = f"{self.config.base_url}{endpoint}"
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": method,
+                "params": params or {}
+            }
+            
+            # Send request and get SSE stream
+            async with self.client.stream("POST", url, json=payload) as response:
+                if response.status_code != 200:
+                    return {
+                        "error": {
+                            "code": response.status_code,
+                            "message": f"HTTP {response.status_code}"
+                        }
+                    }
+                
+                # Read SSE stream
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        data = line[6:]  # Remove "data: " prefix
+                        if data.strip():
+                            try:
+                                return json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+                
+                return {"error": {"code": -1, "message": "No valid response received"}}
+                
+        except Exception as e:
+            return {
+                "error": {
+                    "code": -1,
+                    "message": str(e)
+                }
+            }
+    
+    async def call_gateway(
+        self, 
+        gateway_type: str,
+        endpoint: str, 
+        method: str, 
+        params: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Call MCP server through appropriate gateway type"""
         
-        elif action == "start_stdio_gateway":
-            return await self.adapter.start_sse_to_stdio_gateway(
-                kwargs.get("sse_url"),
-                kwargs.get("headers"),
-                kwargs.get("require_approval", True)
-            )
-        
-        elif action == "start_http_gateway":
-            return await self.adapter.start_streamable_http_gateway(
-                kwargs.get("mcp_server_command"),
-                kwargs.get("port", 8000),
-                kwargs.get("stateful", False),
-                kwargs.get("session_timeout", 60000),
-                kwargs.get("require_approval", True)
-            )
-        
-        elif action == "stop_gateway":
-            return await self.adapter.stop_gateway(kwargs.get("gateway_id"))
-        
-        elif action == "list_gateways":
-            return {"gateways": await self.adapter.list_active_gateways()}
-        
-        elif action == "audit_log":
-            return {"audit_log": await self.adapter.get_audit_log()}
-        
-        elif action == "cleanup":
-            await self.adapter.cleanup_all_gateways()
-            return {"status": "cleanup_complete"}
-        
+        if gateway_type == "http":
+            return await self.call_http_gateway(endpoint, method, params)
+        elif gateway_type == "websocket" or gateway_type == "ws":
+            return await self.call_websocket_gateway(endpoint, method, params)
+        elif gateway_type == "sse":
+            return await self.call_sse_gateway(endpoint, method, params)
         else:
-            raise ValueError(f"Unknown action: {action}")
+            return {
+                "error": {
+                    "code": -1,
+                    "message": f"Unknown gateway type: {gateway_type}"
+                }
+            }
+    
+    # Convenience methods for common MCP operations
+    async def list_tools(self, gateway_type: str, endpoint: str) -> Dict[str, Any]:
+        """List available tools from MCP server"""
+        return await self.call_gateway(gateway_type, endpoint, "tools/list")
+    
+    async def call_tool(
+        self, 
+        gateway_type: str, 
+        endpoint: str, 
+        tool_name: str, 
+        arguments: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """Call a specific tool on MCP server"""
+        return await self.call_gateway(
+            gateway_type, 
+            endpoint, 
+            "tools/call", 
+            {"name": tool_name, "arguments": arguments or {}}
+        )
+    
+    async def list_resources(self, gateway_type: str, endpoint: str) -> Dict[str, Any]:
+        """List available resources from MCP server"""
+        return await self.call_gateway(gateway_type, endpoint, "resources/list")
+    
+    async def read_resource(
+        self, 
+        gateway_type: str, 
+        endpoint: str, 
+        resource_uri: str
+    ) -> Dict[str, Any]:
+        """Read a specific resource from MCP server"""
+        return await self.call_gateway(
+            gateway_type, 
+            endpoint, 
+            "resources/read", 
+            {"uri": resource_uri}
+        )

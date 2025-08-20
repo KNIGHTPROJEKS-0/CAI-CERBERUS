@@ -1,0 +1,54 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/workspaces"
+      ],
+      "transport": "stdio",
+      "description": "File system operations for CAI-CERBERUS workspaces",
+      "enabled": true
+    },
+    "git": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "/Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS"
+      ],
+      "transport": "stdio",
+      "description": "Git operations for CAI-CERBERUS repository",
+      "enabled": true
+    },
+    "web-search": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "transport": "stdio",
+      "description": "Web search capabilities for OSINT",
+      "enabled": false,
+      "env": {
+        "BRAVE_API_KEY": ""
+      }
+    },
+    "database": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-sqlite",
+        "--db-path",
+        "/Users/ORDEROFCODE/KNIGHTPROJEKS/CERBERUS-FANGS/CAI-CERBERUS/data/cerberus.db"
+      ],
+      "transport": "stdio",
+      "description": "Database operations for CAI-CERBERUS data",
+      "enabled": false
+    }
+  },
+  "settings": {
+    "timeout": 30000,
+    "maxConcurrentServers": 5,
+    "logLevel": "info",
+    "enableMetrics": true
+  }
+}

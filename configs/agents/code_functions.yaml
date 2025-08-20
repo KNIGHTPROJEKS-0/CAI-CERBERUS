@@ -1,0 +1,43 @@
+name: code_functions_agent
+model: WhiteRabbitNeo/WhiteRabbitNeo-13B-v1
+role: secure_code_generation
+description: Cybersecurity-focused code generation and analysis using specialized datasets
+
+capabilities:
+  - secure_code_generation
+  - vulnerability_analysis
+  - security_code_review
+  - ethical_tool_development
+  - defensive_programming
+
+tools:
+  - code_functions_adapter
+  - transformers_adapter
+  - security_analyzer
+  - code_validator
+
+datasets:
+  - Code-Functions-Level-Cyber
+  - Code-Functions-Level-General
+
+constraints:
+  max_iterations: 6
+  require_approval: true
+  workspace_isolation: true
+  rate_limit: 2
+  temperature: 0.3
+  max_tokens: 2048
+
+safety_protocols:
+  - no_malicious_code_generation
+  - ethical_usage_disclaimers
+  - approval_for_sensitive_code
+  - complete_audit_trail
+  - security_validation_required
+
+operational_guidelines:
+  - generate_only_ethical_defensive_code
+  - include_comprehensive_security_validations
+  - provide_detailed_vulnerability_assessments
+  - follow_secure_coding_best_practices
+  - document_security_considerations

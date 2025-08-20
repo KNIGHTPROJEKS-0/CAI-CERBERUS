@@ -1,0 +1,109 @@
+# Docker Offload Configuration for CAI-CERBERUS
+# Optimized for Docker Pro account with cloud build acceleration
+
+# Build configuration for Docker Offload
+build:
+  # Use Docker Offload for builds
+  offload: true
+  
+  # Build context optimization
+  context: .
+  dockerfile: Dockerfile
+  
+  # Build arguments
+  args:
+    - BUILDKIT_INLINE_CACHE=1
+    - DOCKER_BUILDKIT=1
+  
+  # Cache configuration
+  cache_from:
+    - type=gha
+    - type=registry,ref=ghcr.io/knightprojeks-0/cai-cerberus:cache
+  
+  cache_to:
+    - type=gha,mode=max
+    - type=registry,ref=ghcr.io/knightprojeks-0/cai-cerberus:cache,mode=max
+  
+  # Platform targeting
+  platforms:
+    - linux/amd64
+    - linux/arm64
+  
+  # Build optimization
+  target: production
+  
+# Offload session configuration
+session:
+  # Automatically start offload session
+  auto_start: true
+  
+  # Session timeout (in minutes)
+  timeout: 60
+  
+  # Resource allocation
+  resources:
+    cpu: "4"
+    memory: "8G"
+    disk: "50G"
+  
+  # Region preference (closest to your location)
+  region: "us-west-2"  # Adjust based on your location
+  
+# Security configuration
+security:
+  # Enable vulnerability scanning
+  scan: true
+  
+  # SBOM generation
+  sbom: true
+  
+  # Attestation
+  attestation: true
+  
+  # Provenance tracking
+  provenance: true
+
+# Registry configuration
+registry:
+  # Default registry for caching
+  default: "ghcr.io"
+  
+  # Authentication
+  auth:
+    ghcr.io:
+      username: "${GITHUB_USERNAME}"
+      password: "${GITHUB_TOKEN}"
+  
+  # Mirror configuration for faster pulls
+  mirrors:
+    docker.io: "mirror.gcr.io"
+
+# Monitoring and logging
+monitoring:
+  # Enable build metrics
+  metrics: true
+  
+  # Log level
+  log_level: "info"
+  
+  # Export metrics to Prometheus
+  prometheus:
+    enabled: true
+    endpoint: "http://localhost:9090"
+
+# Optimization settings
+optimization:
+  # Enable parallel builds
+  parallel: true
+  
+  # Build concurrency
+  concurrency: 4
+  
+  # Layer caching
+  layer_cache: true
+  
+  # Compression
+  compression: "gzip"
+  
+  # Squash layers
+  squash: false  # Keep false for better caching

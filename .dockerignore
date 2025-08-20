@@ -1,0 +1,41 @@
+.git
+__pycache__
+*.pyc
+.env
+.venv
+node_modules
+logs
+*.log
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Large model files
+models/*.bin
+models/*.safetensors
+models/pytorch_model.bin
+
+# Keep datasets but exclude large binaries
+!external-tools/datasets/
+external-tools/datasets/**/*.bin
+external-tools/datasets/**/*.safetensors
+
+# Temporary files
+*.tmp
+*.temp
+firebase-debug.log
+
+# Documentation
+docs/_build/
+/site

@@ -1,3 +1,69 @@
-fastapi==0.104.1
-uvicorn==0.24.0
-pydantic==2.5.0
+# Core PyTorch stack
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.23.0
+safetensors>=0.4.0
+einops>=0.6.0
+
+# Hugging Face stack for Agents
+transformers[agents]>=4.36.0
+datasets>=2.14.0
+diffusers>=0.21.0
+tokenizers>=0.14.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0,<5.0.0
+huggingface_hub[cli]>=0.19.0
+accelerate>=0.24.0
+bitsandbytes>=0.41.0
+peft>=0.10.0
+hf_transfer>=0.1.6
+
+# LiteLLM for unified model access
+litellm[proxy]>=1.40.0
+
+# LangChain + Agentic graph
+langchain>=0.2.0
+langchain-community>=0.2.0
+langgraph>=0.2.0
+langserve>=0.0.54
+langsmith>=0.1.83
+
+# Web/API server
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+httpx>=0.25.0
+orjson>=3.9.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# Agent tools and search
+faiss-cpu>=1.7.4
+duckduckgo-search>=4.0.0
+wikipedia>=1.4.0
+arxiv>=2.0.0
+tenacity>=8.2.0
+
+# Async, networking, messaging
+aiohttp>=3.8.0
+asyncio-mqtt>=0.13.0
+uvloop>=0.19.0 ; platform_system == "Linux"
+
+# CLI, config, UX
+pyyaml>=6.0
+click>=8.0.0
+rich>=13.0.0
+
+# Database and caching
+psycopg2-binary>=2.9.0
+redis>=5.0.0
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+
+# Monitoring and observability
+prometheus-client>=0.19.0
+supervisor>=4.2.0
+
+# Additional utilities
+requests>=2.31.0
+pandas>=2.0.0
