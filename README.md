@@ -136,11 +136,57 @@ CERBERUS_ALLOWED_HOSTS=example.com,192.168.1.0/24,your-test-domain.com
 # Initialize CAI-CERBERUS workspace and configuration
 cai --init
 
-# Interactive mode with human approval
-cai --workspace CERBERUS
+# Build and start unified stack
+make stack-build
+make stack-start
 
 # Check system status
 cai --version
+make stack-status
+
+# Interactive mode with human approval
+cai --workspace CERBERUS
+```
+
+## 🚀 Unified Stack Management
+
+### Quick Start Commands
+```bash
+# Build unified stack with cloud builder
+make stack-build
+
+# Start all services (1 unified container + Redis + PostgreSQL + N8N)
+make stack-start
+
+# Check status of all services
+make stack-status
+
+# View logs from all services
+make stack-logs
+
+# Enter unified container shell
+make stack-shell
+
+# Stop everything
+make stack-stop
+```
+
+### Development Commands
+```bash
+# Check framework version and status
+cai --version
+
+# Switch to specific workspace
+cai --workspace CERBERUS
+
+# Create workspace with virtual environment
+cai --workspace CERBERUS --set --venv --python 3.12
+
+# Restart services
+make stack-restart
+
+# Clean and rebuild
+make stack-clean && make stack-build
 ```
 
 ## Core Concepts
@@ -883,45 +929,71 @@ Note: Some features may be gated behind environment variables or optional compon
 
 ### 🆕 Latest Changes (Current Release)
 
-#### **LiteLLM Model Provider Examples** ✅
-- **New**: `examples/model_providers/whiterabbitneo_example.py` - Complete WhiteRabbitNeo integration example
-- **New**: `examples/model_providers/llamacpp_example.py` - LlamaCP model integration with multi-model fallback
-- **Enhanced**: All examples include proxy health checks, model discovery, completion testing, cost estimation, and safety validation
-- **Fixed**: LiteLLMAdapter constructor usage - changed `proxy_url` to `base_url` parameter across all examples
-- **Verified**: All adapter method signatures (`get_cost_estimate`, `complete_chat`, `validate_request_safety`) aligned with implementation
+#### **🐳 Unified Container Architecture** ✅
+- **Consolidated**: All services into single unified CAI-CERBERUS container
+- **Integrated**: LiteLLM proxy, WhiteRabbitNeo, datasets, and framework in one container
+- **Added**: Supervisor configuration for multi-service management
+- **Updated**: Docker Compose to 4-container architecture (unified + postgres + redis + n8n)
+- **Enhanced**: Dockerfile with all dependencies and proper permissions
+- **Created**: Database initialization script for multiple databases
+- **Fixed**: .env file format (removed quotes from API keys)
+- **Added**: Comprehensive .gitignore for better repository management
 
-#### **Workspace Management Enhancements** ✅
-- **Enhanced**: `src/cai/repl/commands/workspace.py` `handle_set` method with new flags:
-  - `--venv`: Create Python virtual environment for workspace isolation
-  - `--conda`: Create Conda environment for specialized dependencies
-  - `--python X.Y`: Specify Python version for virtual environments
-- **Integration**: Seamless workspace environment management via CAI CLI
-- **Examples**: `cai --workspace CERBERUS --set --venv --python 3.12`
+#### **🤖 WhiteRabbitNeo & AI Integration** ✅
+- **Enhanced**: Transformers adapter with server mode support (FastAPI endpoints)
+- **Integrated**: Direct transformers integration for WhiteRabbitNeo 13B model
+- **Added**: Code Functions datasets for cybersecurity and general code generation
+- **Updated**: Requirements.txt with all necessary AI/ML dependencies
+- **Configured**: GPU support with proper resource allocation
+- **Implemented**: Model caching and optimization strategies
 
-#### **Documentation & Configuration Updates** ✅
-- **Updated**: README.md with comprehensive LiteLLM examples and usage patterns
-- **Added**: Workspace management command documentation
-- **Enhanced**: Model provider integration sections with environment variable requirements
-- **Clarified**: LiteLLMAdapter constructor parameters and method signatures
+#### **🔧 Infrastructure & DevOps** ✅
+- **Updated**: Makefile with unified stack management commands
+- **Enhanced**: Cloud builder integration with Docker Buildx
+- **Added**: Multi-database PostgreSQL setup (cerberus, n8n, litellm)
+- **Configured**: Redis caching and session management
+- **Implemented**: Health checks for all services
+- **Added**: Supervisor process management for unified container
 
-#### **Code Quality & Compatibility** ✅
-- **Fixed**: Constructor parameter mismatch in LiteLLM examples (`proxy_url` → `base_url`)
-- **Verified**: Method signature compatibility across all adapter implementations
-- **Enhanced**: Error handling and validation in example scripts
-- **Maintained**: Backward compatibility with existing configurations
+#### **📦 Package & CLI Framework** ✅
+- **Created**: Complete Python package structure with setup.py
+- **Implemented**: CLI framework with cai, cerberus, cai-cerberus entry points
+- **Integrated**: Virtual environment (cai_env) with all dependencies
+- **Added**: Workspace management with environment isolation
+- **Enhanced**: Configuration system with unified .env management
+- **Implemented**: Tool path validation and external tool integration
 
 ### 🔄 Integration Status
-- **LiteLLM Proxy**: Fully operational with Docker setup ✅
-- **WhiteRabbitNeo Models**: Integrated with dedicated examples ✅
-- **LlamaCP Models**: Supported with comprehensive examples ✅
-- **Workspace Environments**: Python venv and Conda support ✅
-- **Model Route Discovery**: Automatic detection and validation ✅
+- **Unified Container**: Single container with all services ✅
+- **LiteLLM Proxy**: Integrated in main container on port 4000 ✅
+- **WhiteRabbitNeo**: Direct transformers integration on port 8080 ✅
+- **Code Functions**: Cybersecurity and general datasets integrated ✅
+- **PostgreSQL**: Multi-database setup (cerberus, n8n, litellm) ✅
+- **Redis**: Caching and session management ✅
+- **N8N**: Workflow automation with database integration ✅
+- **External Tools**: All 7 security tools properly configured ✅
+- **CLI Framework**: Complete cai_cerberus package with entry points ✅
+- **Virtual Environment**: Integrated cai_env with all dependencies ✅
 
-### 📋 Pending Tasks
-- **llama-cpp-python Examples**: Hugging Face GGUF model integration examples
-- **Docker Compose**: Optional llama-cpp-python service configuration
-- **Advanced Patterns**: Multi-agent handoff examples with LiteLLM
-- **Performance Optimization**: Model-specific configuration templates
+### 📋 Current Architecture
+```
+┌─────────────────────────────────────────────────────────────┐
+│                CAI-CERBERUS-UNIFIED                         │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐   │
+│  │ CAI-CERBERUS│ │ LiteLLM     │ │ WhiteRabbitNeo      │   │
+│  │ Framework   │ │ Proxy       │ │ Transformers        │   │
+│  │ :8000       │ │ :4000       │ │ :8080               │   │
+│  └─────────────┘ └─────────────┘ └─────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ External Tools + Datasets + Code Functions          │   │
+│  │ NMAP, Nuclei, Subfinder, Amass, SQLMap, etc.       │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ PostgreSQL  │ │ Redis       │ │ N8N         │
+│ :5432       │ │ :6379       │ │ :5678       │
+└─────────────┘ └─────────────┘ └─────────────┘
+```
 
 ## Safety, Ethics, and Scope
 
